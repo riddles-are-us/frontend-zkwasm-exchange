@@ -11,8 +11,10 @@ import { createCommand } from "zkwasm-minirollup-rpc";
 import { MarketPage } from "../components/MarketPage";
 import Footer from "../components/Foot";
 import Nav from "../components/Nav";
+import Commands from "../components/Commands";
+import { MDBRow, MDBCol, MDBTypography } from 'mdb-react-ui-kit';
 
-const REGISTER_PLAYER = 4n;
+const CMD_REGISTER_PLAYER = 4n;
 
 export function Main() {
   const connectState = useAppSelector(selectConnectState);
@@ -46,7 +48,7 @@ export function Main() {
 
   useEffect(() => {
     if (connectState == ConnectState.InstallPlayer) {
-      const command = createCommand(0n, REGISTER_PLAYER, []);
+      const command = createCommand(0n, CMD_REGISTER_PLAYER, []);
       dispatch(sendTransaction({
         cmd: command,
         prikey: l2account!.getPrivateKey()
@@ -56,9 +58,33 @@ export function Main() {
 
   return (
     <>
-      <Nav />
-      <MarketPage />
-      <Footer />
+    {/* Navigation Bar */}
+    <Nav />
+
+    {/* Command Buttons Section */}
+    <MDBRow className="mt-4">
+      <MDBCol>
+        {/* Title for the Command Buttons Section */}
+        <MDBTypography tag="h3" className="text-center mb-4">
+          Execute Commands
+        </MDBTypography>
+        <Commands />
+      </MDBCol>
+    </MDBRow>
+
+    {/* Market Page */}
+    <MDBRow className="mt-4">
+      <MDBCol>
+        {/* Title for the MarketPage Section */}
+        <MDBTypography tag="h3" className="text-center mb-4">
+          Market Data
+        </MDBTypography>
+        <MarketPage />
+      </MDBCol>
+    </MDBRow>
+
+    {/* Footer */}
+    <Footer />
     </>
   );
 }
