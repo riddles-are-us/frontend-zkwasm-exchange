@@ -62,9 +62,9 @@ const UpdateTokenModal: React.FC<UpdateTokenProps> = ({
       validateHexString(cleanedTokenAddress, 40);
       const formattedAddress = formatAddress(cleanedTokenAddress);
       const validTokenAddress = ethers.getAddress(formattedAddress);
-      
+
       await handler(BigInt(cleanedTokenIndex), validTokenAddress);
-      
+
       setInfoMessage("Update token successfully!");
       setTokenIndex('');
       setTokenAddress('');
@@ -80,7 +80,7 @@ const UpdateTokenModal: React.FC<UpdateTokenProps> = ({
 
   return (
     <>
-    `  <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
+      <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
         <MDBModalDialog>
           <MDBModalContent>
             <MDBModalHeader>
@@ -127,7 +127,6 @@ const UpdateTokenModal: React.FC<UpdateTokenProps> = ({
         onClose={() => setShowResult(false)}
       />
     </>
-    
   );
 };
 

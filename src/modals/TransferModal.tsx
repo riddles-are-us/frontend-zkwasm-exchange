@@ -88,7 +88,7 @@ const TransferModal: React.FC<TransferProps> = ({
 
   return (
     <>
-    `  <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
+      <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
         <MDBModalDialog>
           <MDBModalContent>
             <MDBModalHeader>
@@ -145,7 +145,6 @@ const TransferModal: React.FC<TransferProps> = ({
         onClose={() => setShowResult(false)}
       />
     </>
-    
   );
 };
 

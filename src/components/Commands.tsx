@@ -18,8 +18,16 @@ import CloseMarketModal from "../modals/CloseMarketModal";
 import TransferModal from "../modals/TransferModal";
 import DepositTokenModal from "../modals/DepositTokenModal";
 import { queryState } from "../request";
+import { Order } from "../data/state";
+import { GetBaseProvider } from 'zkwasm-minirollup-browser/src/provider';
 
-const FEE = 3n;
+const MAX_64_BIT = BigInt('9223372036854775807');
+const FEE = 3;
+const FEE_TOKEN_INDEX = 0;
+const TYPE_LIMIT = 0;
+const TYPE_MARKET = 1;
+const FLAG_BUY = 1;
+const FLAG_SELL = 0;
 const CMD_ADD_TOKEN = 1n;
 const CMD_UPDATE_TOKEN = 12n;
 const CMD_ADD_MARKET = 2n;
@@ -183,13 +191,297 @@ export default function Commands() {
     }
   }
 
-  const addLimitOrder = async (marketId: bigint, flag: bigint, limitPrice: bigint, amount: bigint) => {
+  const addTrade = async (aOrderId: bigint, bOrderId: bigint, aActualAmount: bigint, bActualAmount: bigint) => {
     if(!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
-      setShowAddLimitOrderModal(false);
     }
 
+    let params = [aOrderId, bOrderId, aActualAmount, bActualAmount];
+    let action = await dispatch(
+      sendTransaction({
+        cmd: createCommand(BigInt(nonce), CMD_ADD_TRADE, params),
+        prikey: l2account!.getPrivateKey(),
+      })
+    );
+    if (sendTransaction.fulfilled.match(action)) {
+      const trades = action.payload.state.trades;
+      const latestTrade = trades[trades.length - 1];
+      return "Success: latest trade is " + JSON.stringify(latestTrade);
+    } else if(sendTransaction.rejected.match(action)) {
+      throw Error("Error: " +  action.payload);
+    }
+  }
+
+  /*const getMarket() => {
+    /data/markets
+  };*/
+
+  /*const getCost = (incomingOrder: Order) => {
+    let cost = amount * price;
+  }*/
+
+  const matchOrdersGetTradeParams = async (orders: Order[], incomingOrder: Order) => {
+    let result = {aOrderId: 0n, bOrderId: 0n, aActualAmount: 0n, bActualAmount: 0n};
+    if (incomingOrder.flag === FLAG_BUY) {
+      // Buy order: Sort sell orders by price (ascending)
+      let sellOrders = orders.filter(order => order.flag === FLAG_SELL);
+      sellOrders.sort((a, b) => Number(a.price - b.price));  // Sort sell orders from low to high price
+
+      let price = 0;
+
+      // Traverse the sell orders and match
+      for (let sellOrder of sellOrders) {
+        // Buy order price >= Sell order price
+        if(incomingOrder.type_ == TYPE_LIMIT && sellOrder.type_ == TYPE_LIMIT) {
+          if(incomingOrder.price <= sellOrder.price) {
+            continue;
+          }
+        }
+
+        if(incomingOrder.type_ == TYPE_LIMIT) {
+          if(sellOrder.type_ == TYPE_LIMIT) {
+            price = sellOrder.price;
+          } else {
+            price = incomingOrder.price;
+          }
+        } else {
+          price = sellOrder.price;
+        }
+
+        // Get buy amount and sell amount
+        let aActualAmount = 0;
+        let bActualAmount = 0;
+        if(incomingOrder.type_ == TYPE_LIMIT) {
+          aActualAmount = incomingOrder.b_token_amount;
+        } else {
+          if(incomingOrder.a_token_amount != 0) {
+            aActualAmount = incomingOrder.a_token_amount;
+          } else {
+            aActualAmount = incomingOrder.b_token_amount;
+          }
+        }
+        if(sellOrder.type_ == TYPE_LIMIT) {
+          bActualAmount = sellOrder.b_token_amount;
+        } else {
+          if(sellOrder.a_token_amount != 0) {
+            bActualAmount = sellOrder.a_token_amount;
+          } else {
+            bActualAmount = sellOrder.b_token_amount;
+          }
+        }
+
+        // Calculate the buy orders' expected amount based on the price
+        let aAmount = price * bActualAmount;
+
+        if (aAmount > MAX_64_BIT) {
+          console.log("price * b_token_amount overflow\n");
+          continue;
+        }
+
+        // Ensure aAmount matches buy order's expected amount
+        if (aAmount !== aActualAmount) {
+          console.log("(price * sell order's expected amount) does not match buy order's expected amount\n");
+          continue;
+        }
+        result = {
+          aOrderId: BigInt(incomingOrder.id),
+          bOrderId: BigInt(sellOrder.id),
+          aActualAmount: BigInt(aActualAmount),
+          bActualAmount: BigInt(bActualAmount)
+        };
+        break;  // Stop once a match is found
+      }
+      return result;
+    } else if (incomingOrder.flag === FLAG_SELL) {
+      // Sell order: Sort buy orders by price (descending)
+      let buyOrders = orders.filter(order => order.flag === FLAG_BUY);
+      buyOrders.sort((a, b) => Number(b.price - a.price));  // Sort buy orders from high to low price
+
+      let price = 0;
+
+      // Traverse the buy orders and match
+      for (let buyOrder of buyOrders) {
+        // Buy order price >= Sell order price
+        if(incomingOrder.type_ == TYPE_LIMIT && buyOrder.type_ == TYPE_LIMIT) {
+          if(buyOrder.price <= incomingOrder.price) {
+            continue;
+          }
+        }
+
+        if(buyOrder.type_ == TYPE_LIMIT) {
+          if(incomingOrder.type_ == TYPE_LIMIT) {
+            price = incomingOrder.price;
+          } else {
+            price = buyOrder.price;
+          }
+        } else {
+          price = incomingOrder.price;
+        }
+
+        // Get buy amount and sell amount
+        let aActualAmount = 0;
+        let bActualAmount = 0;
+        if(buyOrder.type_ == TYPE_LIMIT) {
+          aActualAmount = buyOrder.b_token_amount;
+        } else {
+          if(buyOrder.a_token_amount != 0) {
+            aActualAmount = buyOrder.a_token_amount;
+          } else {
+            aActualAmount = buyOrder.b_token_amount;
+          }
+        }
+        if(incomingOrder.type_ == TYPE_LIMIT) {
+          bActualAmount = incomingOrder.b_token_amount;
+        } else {
+          if(incomingOrder.a_token_amount != 0) {
+            bActualAmount = incomingOrder.a_token_amount;
+          } else {
+            bActualAmount = incomingOrder.b_token_amount;
+          }
+        }
+
+        // Calculate the buy orders' expected amount based on the price
+        let aAmount = price * bActualAmount;
+
+        if (aAmount > MAX_64_BIT) {
+          console.log("price * b_token_amount overflow\n");
+          continue;
+        }
+
+        // Ensure aAmount matches buy order's expected amount
+        if (aAmount !== aActualAmount) {
+          console.log("(price * sell order's expected amount) does not match buy order's expected amount\n");
+          continue;
+        }
+
+        result = {
+          aOrderId: BigInt(buyOrder.id),
+          bOrderId: BigInt(incomingOrder.id),
+          aActualAmount: BigInt(aActualAmount),
+          bActualAmount: BigInt(bActualAmount)
+        };
+        break;  // Stop once a match is found
+      }
+      return result;
+    }
+  }
+
+  async function orderCheck(f: ()=> any, check:(before: any, after: any) => boolean) {
+    // Query state before placing the market order
+    let before = await dispatch(queryState(l2account!.getPrivateKey()));
+
+    const action = await f();
+
+    // Query state after placing the market order
+    let after = await dispatch(queryState(l2account!.getPrivateKey()));
+    if(!check(before.payload, after.payload)) {
+        throw new Error("orderCheck failed");
+    }
+
+    return action;
+  }
+
+  const addMarketOrder = async (marketId: bigint, flag: bigint, bTokenAmount: bigint, aTokenAmount: bigint) => {
+    if (!l2account) {
+      setInfoMessage("Please connect wallet before any transactions!");
+      setShowResult(true);
+      setShowAddMarketOrderModal(false);
+      return;
+    }
+
+    // Send transaction to add market order
+    let f = async () => {
+      let params = [marketId, flag, bTokenAmount, aTokenAmount];
+      let action = await dispatch(
+        sendTransaction({
+          cmd: createCommand(BigInt(nonce), CMD_ADD_MARKET_ORDER, params),
+          prikey: l2account!.getPrivateKey(),
+        })
+      );
+      return action;
+    }
+
+    let cost = 0;
+    let lastDealPrice = 0;
+    /*if (flag === BigInt(FLAG_BUY)) {  // If it's a Buy order
+        if (aTokenAmount !== 0n) {
+            cost = aTokenAmount;  // For Buy orders, directly use aTokenAmount as the cost
+        } else {
+            bTokenAmount * market.last_deal_price;
+            cost = bTokenAmount * lastDealPrice * 2;  // If aTokenAmount is 0, calculate the cost using bTokenAmount and lastDealPrice (multiplied by 2)
+        }
+    } else if (flag === BigInt(FLAG_SELL)) {  // If it's a Sell order
+        if (bTokenAmount !== 0n) {
+            cost = bTokenAmount;  // For Sell orders, directly use bTokenAmount as the cost
+        } else {
+            cost = (aTokenAmount * 2 * precision) / lastDealPrice;  // If bTokenAmount is 0, calculate the cost using aTokenAmount, precision, and lastDealPrice
+        }
+    }*/
+
+    const action = await orderCheck(f, (before: any, after: any): boolean => {
+      let tokenIdx = 0;
+
+      if ((before.state?.order_id_counter ?? 0) + 1 !== (after.state?.order_id_counter ?? 0)) {
+        console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
+        return false;
+      }
+
+      // FEE_TOKEN_INDEX = 0, token index 0 should consider processing fee
+      if (after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance !== FEE + cost) {
+        console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+        return false;
+      }
+      if (before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance !== FEE + cost) {
+        console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
+        return false;
+      }
+
+      tokenIdx = 1;
+
+      if (after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance !== cost) {
+        console.log("lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+        return false;
+      }
+
+      if (before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance !== cost) {
+        console.log("balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
+        return false;
+      }
+
+      return true;
+    });
+
+    let successMessage = "";
+    if (sendTransaction.fulfilled.match(action)) {
+      // Return success message along with the result
+      const orders = action.payload.state.orders;
+      const latestOrder = orders[orders.length - 1];
+      successMessage += "Success: latest order is " + JSON.stringify(latestOrder);
+
+      // Try match orders. If matched, get addTrade parameters
+      const params = await matchOrdersGetTradeParams(orders, latestOrder);
+      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+
+      successMessage += " " + addTradeResult;
+      return successMessage;
+    } else if (sendTransaction.rejected.match(action)) {
+      throw new Error("Error: " + action.payload);
+    }
+  };
+
+  const addLimitOrder = async (marketId: bigint, flag: bigint, limitPrice: bigint, amount: bigint) => {
+    if (!l2account) {
+      setInfoMessage("Please connect wallet before any transactions!");
+      setShowResult(true);
+      setShowAddLimitOrderModal(false);
+      return;
+    }
+
+    // Query state before placing the limit order
+    let before = await dispatch(queryState(l2account!.getPrivateKey()));
+
+    // Send transaction to add limit order
     let params = [marketId, flag, limitPrice, amount];
     let action = await dispatch(
       sendTransaction({
@@ -197,88 +489,33 @@ export default function Commands() {
         prikey: l2account!.getPrivateKey(),
       })
     );
+
+    let successMessage = "";
     if (sendTransaction.fulfilled.match(action)) {
+      // Query the state after placing the limit order
+      let after = await dispatch(queryState(l2account!.getPrivateKey()));
+
+      // Validate if the state has changed correctly
+      let checkResult = orderCheck(before.payload, after.payload);
+      if (!checkResult) {
+        throw new Error("orderCheck failed");
+      }
+
+      // Return success message along with the result
       const orders = action.payload.state.orders;
       const latestOrder = orders[orders.length - 1];
-      return "Success: latest order is " + JSON.stringify(latestOrder);
-    } else if(sendTransaction.rejected.match(action)) {
-      throw Error("Error: " +  action.payload);
+      successMessage += "Success: latest order is " + JSON.stringify(latestOrder);
+
+      // Try match orders. If matched, get addTrade parameters
+      const params = await matchOrdersGetTradeParams(orders, latestOrder);
+      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+
+      successMessage += " " + addTradeResult;
+      return successMessage;
+    } else if (sendTransaction.rejected.match(action)) {
+      throw Error("Error: " + action.payload);
     }
-  }
-
-  const orderCheck = ((before: any, after: any): boolean => {
-    let tokenIdx = 0; // hardcode, todo
-
-    if ((before.state?.order_id_counter ?? 0) + 1 !== (after.state?.order_id_counter ?? 0)) {
-      console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
-      return false;
-    }
-
-    if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== FEE) {
-      console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-      return false;
-    }
-
-    if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== FEE) {
-      console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
-      return false;
-    }
-
-    tokenIdx = 1; // hardcode, todo
-
-    if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== 100n) {
-      console.log("lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-      return false;
-    }
-
-    if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== 100n) {
-      console.log("balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
-      return false;
-    }
-
-    return true;
-  });
-
-  const addMarketOrder = async (marketId: bigint, flag: bigint, bTokenAmount: bigint, aTokenAmount: bigint) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowAddMarketOrderModal(false);
-    }
-
-    let before = await dispatch(queryState(l2account!.getPrivateKey())); 
-    let params = [marketId, flag, bTokenAmount, aTokenAmount];
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_ADD_MARKET_ORDER, params),
-        prikey: l2account!.getPrivateKey(),
-      })
-    );
-    if (sendTransaction.fulfilled.match(action)) {
-      const orders = action.payload.state.orders;
-      const latestOrder = orders[orders.length - 1];
-      return "Success: latest order is " + JSON.stringify(latestOrder);
-    } else if(sendTransaction.rejected.match(action)) {
-      throw Error("Error: " +  action.payload);
-    }
-
-    /*let after = await dispatch(queryState(l2account!.getPrivateKey()));
-
-    let checkResult = orderCheck(before, after);
-    if (!checkResult) {
-      throw new Error("orderCheck failed");
-    }
-    let state = await dispatch(queryState(l2account!.getPrivateKey()));
-    const payload = state.payload;
-    const orders = payload.state.orders;
-    const aOrderId = payload.state.order_id_counter - 1;
-    const bOrderId = payload.state.order_id_counter;
-    // todo: b or a token should be judge
-    const aActualAmount = orders[aOrderId - 1].b_token_amount;
-    const bActualAmount = orders[bOrderId - 1].b_token_amount;
-    await addTrade(BigInt(payload.state.order_id_counter - 1), BigInt(payload.state.order_id_counter), aActualAmount, bActualAmount);
-    */
-  }
+  };
 
   const cancelOrder = async (orderId: bigint) => {
     if(!l2account) {
@@ -348,28 +585,6 @@ export default function Commands() {
     }
   }
 
-  const addTrade = async (aOrderId: bigint, bOrderId: bigint, aActualAmount: bigint, bActualAmount: bigint) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-    }
-
-    let params = [aOrderId, bOrderId, aActualAmount, bActualAmount];
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_ADD_TRADE, params),
-        prikey: l2account!.getPrivateKey(),
-      })
-    );
-    if (sendTransaction.fulfilled.match(action)) {
-      const trades = action.payload.state.trades;
-      const latestTrade = trades[trades.length - 1];
-      setInfoMessage("Success: latest trade is " + JSON.stringify(latestTrade));
-    } else if(sendTransaction.rejected.match(action)) {
-      throw Error("Error: " +  action.payload);
-    }
-  }
-
   return (
     <>
       {/* Command Buttons */ }
@@ -408,6 +623,20 @@ export default function Commands() {
         </MDBRow>
 
         <MDBRow className="justify-content-start mt-4">
+          {/* Market Management Commands */}
+          <MDBCol md="3">
+            <MDBBtn onClick={() => setShowAddMarketModal(true)} color="info" block>
+              <MDBIcon icon="building" /> Add Market
+            </MDBBtn>
+          </MDBCol>
+          <MDBCol md="3">
+            <MDBBtn onClick={() => setShowCloseMarketModal(true)} color="warning" block>
+              <MDBIcon icon="times" /> Close Market
+            </MDBBtn>
+          </MDBCol>
+        </MDBRow>
+
+        <MDBRow className="justify-content-start mt-4">
           {/* Order Management Commands */}
           <MDBCol md="3">
             <MDBBtn onClick={() => setShowAddLimitOrderModal(true)} color="primary" block>
@@ -422,20 +651,6 @@ export default function Commands() {
           <MDBCol md="3">
             <MDBBtn onClick={() => setShowCancelOrderModal(true)} color="danger" block>
               <MDBIcon icon="trash" /> Cancel Order
-            </MDBBtn>
-          </MDBCol>
-        </MDBRow>
-
-        <MDBRow className="justify-content-start mt-4">
-          {/* Market Management Commands */}
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowAddMarketModal(true)} color="info" block>
-              <MDBIcon icon="building" /> Add Market
-            </MDBBtn>
-          </MDBCol>
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowCloseMarketModal(true)} color="warning" block>
-              <MDBIcon icon="times" /> Close Market
             </MDBBtn>
           </MDBCol>
         </MDBRow>
@@ -497,6 +712,6 @@ export default function Commands() {
         show={showResult}
         onClose={() => setShowResult(false)}
       />
-    </> 
+    </>
   );
 }

@@ -13,6 +13,7 @@ import {
 import ErrorAlert from '../components/ErrorAlert';
 import { validateIndex, formatErrorMessage } from "../utils/transaction";
 import { ResultModal } from "./ResultModal";
+import { Form } from 'react-bootstrap';
 
 export interface AddLimitOrderProps {
   show: boolean;
@@ -64,23 +65,22 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
       // Validate marketId
       const cleanedOrderId = Number(marketId.trim());
       validateIndex(cleanedOrderId, 64);
-      // Validate flag
-      const cleanedFlag = Number(flag.trim());
-      validateIndex(cleanedFlag, 64);
       // Validate limitPrice
       const cleanedLimitPrice = Number(limitPrice.trim());
       validateIndex(cleanedLimitPrice, 64);
       // Validate amount
       const cleanedAmount = Number(amount.trim());
       validateIndex(cleanedAmount, 64);
-      const result = await handler(BigInt(cleanedOrderId), BigInt(cleanedFlag), BigInt(cleanedLimitPrice), BigInt(cleanedAmount));
+      const result = await handler(BigInt(cleanedOrderId), BigInt(flag), BigInt(cleanedLimitPrice), BigInt(cleanedAmount));
 
-      setInfoMessage(result!);
+      if(result) {
+        setInfoMessage(result);
+        setShowResult(true);
+      }
       setMarketId('');
       setFlag('');
       setLimitPrice('');
       setAmount('');
-      setShowResult(true);
       onClose();
     } catch (error) {
       const err = formatErrorMessage(error);
@@ -111,14 +111,14 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
                 />
               </MDBInputGroup>
               <MDBInputGroup className="mb-3">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Enter flag as uint32 hexadecimal (e.g., 0x12...)"
+                <Form.Select
                   value={flag}
                   onChange={(e) => setFlag(e.target.value)}
-                  required
-                />
+                >
+                  <option value="" disabled>Select Buy/Sell</option>
+                  <option value="1">Buy</option>
+                  <option value="0">Sell</option>
+                </Form.Select>
               </MDBInputGroup>
               <MDBInputGroup className="mb-3">
                 <input
@@ -159,7 +159,6 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
         onClose={() => setShowResult(false)}
       />
     </>
-    
   );
 };
 

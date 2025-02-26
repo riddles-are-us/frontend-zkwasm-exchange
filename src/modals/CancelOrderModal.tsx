@@ -49,9 +49,9 @@ const CancelOrderModal: React.FC<CancelOrderProps> = ({
       // Validate orderId
       const cleanedOrderId = Number(orderId.trim());
       validateIndex(cleanedOrderId, 64);
-      
+
       const result = await handler(BigInt(cleanedOrderId));
-      
+
       setInfoMessage(result!);
       setOrderId('');
       setShowResult(true);
@@ -66,7 +66,7 @@ const CancelOrderModal: React.FC<CancelOrderProps> = ({
 
   return (
     <>
-    `  <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
+      <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
         <MDBModalDialog>
           <MDBModalContent>
             <MDBModalHeader>
@@ -103,7 +103,6 @@ const CancelOrderModal: React.FC<CancelOrderProps> = ({
         onClose={() => setShowResult(false)}
       />
     </>
-    
   );
 };
 

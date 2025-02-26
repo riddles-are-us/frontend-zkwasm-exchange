@@ -86,7 +86,7 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
 
   return (
     <>
-    `  <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
+      <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
         <MDBModalDialog>
           <MDBModalContent>
             <MDBModalHeader>
@@ -143,7 +143,6 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
         onClose={() => setShowResult(false)}
       />
     </>
-    
   );
 };
 

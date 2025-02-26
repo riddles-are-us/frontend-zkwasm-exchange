@@ -80,7 +80,7 @@ export const sendTransaction = createAsyncThunk(
       return state;
     } catch (err: any) {
       // todo: handle error, unknown error is not meaningful
-      return rejectWithValue(err.message || "UnknownError");
+      return rejectWithValue(err.message || JSON.stringify(err));
     }
   }
 );

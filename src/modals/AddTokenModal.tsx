@@ -61,7 +61,7 @@ const AddTokenModal: React.FC<AddTokenProps> = ({
       validateHexString(cleanedTokenAddress, 40);
       const formattedAddress = formatAddress(cleanedTokenAddress);
       const validTokenAddress = ethers.getAddress(formattedAddress);
-      
+
       await handler(BigInt(cleanedTokenIndex), validTokenAddress);
 
       setInfoMessage("Token added successfully!");
@@ -79,7 +79,7 @@ const AddTokenModal: React.FC<AddTokenProps> = ({
 
   return (
     <>
-    `  <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
+      <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
         <MDBModalDialog>
           <MDBModalContent>
             <MDBModalHeader>
@@ -126,7 +126,6 @@ const AddTokenModal: React.FC<AddTokenProps> = ({
         onClose={() => setShowResult(false)}
       />
     </>
-    
   );
 };
 
