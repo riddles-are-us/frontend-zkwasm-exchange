@@ -51,7 +51,7 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
         throw new Error("The marketId is missing");
       }
       if (!flag) {
-        throw new Error("The flag is missing");
+        throw new Error("Please select buy/sell");
       }
       if (!limitPrice) {
         throw new Error("The limitPrice is missing");
@@ -71,20 +71,16 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
       // Validate amount
       const cleanedAmount = Number(amount.trim());
       validateIndex(cleanedAmount, 64);
-      const result = await handler(BigInt(cleanedOrderId), BigInt(flag), BigInt(cleanedLimitPrice), BigInt(cleanedAmount));
 
+      const result = await handler(BigInt(cleanedOrderId), BigInt(flag), BigInt(cleanedLimitPrice), BigInt(cleanedAmount));
       if(result) {
         setInfoMessage(result);
         setShowResult(true);
       }
-      setMarketId('');
-      setFlag('');
-      setLimitPrice('');
-      setAmount('');
-      onClose();
+      closeModal();
     } catch (error) {
       const err = formatErrorMessage(error);
-      setErrorMessage(`adding token: ${err}`);
+      setErrorMessage(`${err}`);
     } finally {
       setIsExecuting(false);
     }

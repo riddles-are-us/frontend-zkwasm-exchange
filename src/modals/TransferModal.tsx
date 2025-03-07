@@ -11,9 +11,8 @@ import {
   MDBModalDialog
 } from "mdb-react-ui-kit";
 import ErrorAlert from '../components/ErrorAlert';
-import { formatAddress, validateIndex, formatErrorMessage, validateHexString } from "../utils/transaction";
+import { validateIndex, formatErrorMessage, validateHexString } from "../utils/transaction";
 import { ResultModal } from "./ResultModal";
-import { ethers } from "ethers";
 
 export interface TransferProps {
   show: boolean;
@@ -46,7 +45,7 @@ const TransferModal: React.FC<TransferProps> = ({
     try {
       setErrorMessage("");
       if (!pid) {
-        throw new Error("The pid is missing");
+        throw new Error("The player id is missing");
       }
 
       if (!tokenIndex) {
@@ -61,7 +60,7 @@ const TransferModal: React.FC<TransferProps> = ({
 
       // Validate pid
       const cleanedPid = pid.trim();
-      validateHexString(cleanedPid, 64);
+      validateHexString(cleanedPid, 256);
 
       // Validate token index
       const cleanedTokenIndex = Number(tokenIndex.trim());
@@ -72,12 +71,11 @@ const TransferModal: React.FC<TransferProps> = ({
       validateIndex(cleanedAmount, 64);
 
       const result = await handler(cleanedPid, BigInt(cleanedTokenIndex), BigInt(cleanedAmount));
-      setInfoMessage(result!);
-      setPid('');
-      setTokenIndex('');
-      setAmount('');
-      setShowResult(true);
-      onClose();
+      if(result) {
+        setInfoMessage(result);
+        setShowResult(true);
+      }
+      closeModal();
     } catch (error) {
       const err = formatErrorMessage(error);
       setErrorMessage(`transfering token: ${err}`);
@@ -100,7 +98,7 @@ const TransferModal: React.FC<TransferProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter pid as uint32 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter player id as uint256 hexadecimal (e.g., 0x12...)"
                   value={pid}
                   onChange={(e) => setPid(e.target.value)}
                   required

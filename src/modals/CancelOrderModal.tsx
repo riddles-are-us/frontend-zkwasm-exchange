@@ -51,11 +51,11 @@ const CancelOrderModal: React.FC<CancelOrderProps> = ({
       validateIndex(cleanedOrderId, 64);
 
       const result = await handler(BigInt(cleanedOrderId));
-
-      setInfoMessage(result!);
-      setOrderId('');
-      setShowResult(true);
-      onClose();
+      if(result) {
+        setInfoMessage(result);
+        setShowResult(true);
+      }
+      closeModal();
     } catch (error) {
       const err = formatErrorMessage(error);
       setErrorMessage(`cancelling order: ${err}`);

@@ -17,7 +17,7 @@ import { ResultModal } from "./ResultModal";
 export interface CloseMarketProps {
   show: boolean;
   onClose: () => void;
-  handler: (marketId: bigint) => Promise<void>
+  handler: (marketId: bigint) => Promise<string | undefined>
 }
 
 const CloseMarketModal: React.FC<CloseMarketProps> = ({
@@ -50,12 +50,12 @@ const CloseMarketModal: React.FC<CloseMarketProps> = ({
       const cleanedMarketId = Number(marketId.trim());
       validateIndex(cleanedMarketId, 64);
       
-      await handler(BigInt(cleanedMarketId));
-      
-      setInfoMessage("Market closed successfully!");
-      setMarketId('');
-      setShowResult(true);
-      onClose();
+      const result = await handler(BigInt(cleanedMarketId));
+      if(result) {
+        setInfoMessage(result);
+        setShowResult(true);
+      }
+      closeModal();
     } catch (error) {
       const err = formatErrorMessage(error);
       setErrorMessage(`closing market: ${err}`);

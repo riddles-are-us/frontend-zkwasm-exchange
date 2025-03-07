@@ -90,14 +90,10 @@ const AddMarketOrderModal: React.FC<AddTokenProps> = ({
         setInfoMessage(result);
         setShowResult(true);
       }
-      setMarketId('');
-      setFlag('');
-      setBTokenAmount('');
-      setATokenAmount('');
-      onClose();
+      closeModal();
     } catch (error) {
       const err = formatErrorMessage(error);
-      setErrorMessage(`adding market order: ${err}`);
+      setErrorMessage(`${err}`);
     } finally {
       setIsExecuting(false);
     }

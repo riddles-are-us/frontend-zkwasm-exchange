@@ -18,7 +18,7 @@ import { ResultModal } from "./ResultModal";
 export interface UpdateTokenProps {
   show: boolean;
   onClose: () => void;
-  handler: (tokenIndex: bigint, address: string) => Promise<void>
+  handler: (tokenIndex: bigint, address: string) => Promise<string | undefined>
 }
 
 const UpdateTokenModal: React.FC<UpdateTokenProps> = ({
@@ -63,13 +63,12 @@ const UpdateTokenModal: React.FC<UpdateTokenProps> = ({
       const formattedAddress = formatAddress(cleanedTokenAddress);
       const validTokenAddress = ethers.getAddress(formattedAddress);
 
-      await handler(BigInt(cleanedTokenIndex), validTokenAddress);
-
-      setInfoMessage("Update token successfully!");
-      setTokenIndex('');
-      setTokenAddress('');
-      setShowResult(true);
-      onClose();
+      const result = await handler(BigInt(cleanedTokenIndex), validTokenAddress);
+      if(result) {
+        setInfoMessage(result);
+        setShowResult(true);
+      }
+      closeModal();
     } catch (error) {
       const err = formatErrorMessage(error);
       setErrorMessage(`updating token: ${err}`);

@@ -70,12 +70,11 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
       validateIndex(cleanedLastPrice);
 
       const result = await handler(BigInt(cleanedTokenIndexA), BigInt(cleanedTokenIndexB), BigInt(cleanedLastPrice));
-      setInfoMessage(result!);
-      setTokenIndexA('');
-      setTokenIndexB('');
-      setLastPrice('');
-      setShowResult(true);
-      onClose();
+      if(result) {
+        setInfoMessage(result);
+        setShowResult(true);
+      }
+      closeModal();
     } catch (error) {
       const err = formatErrorMessage(error);
       setErrorMessage(`adding market: ${err}`);

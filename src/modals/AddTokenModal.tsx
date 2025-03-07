@@ -18,7 +18,7 @@ import { ResultModal } from "./ResultModal";
 export interface AddTokenProps {
   show: boolean;
   onClose: () => void;
-  handler: (tokenIndex: bigint, address: string) => Promise<void>
+  handler: (tokenIndex: bigint, address: string) => Promise<string | undefined>
 }
 
 const AddTokenModal: React.FC<AddTokenProps> = ({
@@ -34,6 +34,7 @@ const AddTokenModal: React.FC<AddTokenProps> = ({
   const [showResult, setShowResult] = useState(false);
 
   const closeModal = () => {
+    setTokenIndex('');
     setTokenAddress('');
     setErrorMessage("");
     onClose();
@@ -62,13 +63,12 @@ const AddTokenModal: React.FC<AddTokenProps> = ({
       const formattedAddress = formatAddress(cleanedTokenAddress);
       const validTokenAddress = ethers.getAddress(formattedAddress);
 
-      await handler(BigInt(cleanedTokenIndex), validTokenAddress);
-
-      setInfoMessage("Token added successfully!");
-      setTokenIndex('');
-      setTokenAddress('');
-      setShowResult(true);
-      onClose();
+      const result = await handler(BigInt(cleanedTokenIndex), validTokenAddress);
+      if(result) {
+        setInfoMessage(result);
+        setShowResult(true);
+      }
+      closeModal();
     } catch (error) {
       const err = formatErrorMessage(error);
       setErrorMessage(`adding token: ${err}`);

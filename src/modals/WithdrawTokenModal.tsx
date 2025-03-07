@@ -74,12 +74,11 @@ const WithdrawTokenModal: React.FC<WithdrawTokenProps> = ({
       validateIndex(cleanedAmount, 64);
 
       const result = await handler(BigInt(cleanedTokenIndex), validAddress, BigInt(cleanedAmount));
-      
-      setInfoMessage(result!);
-      setTokenIndex('');
-      setAddress('');
-      setShowResult(true);
-      onClose();
+      if(result) {
+        setInfoMessage(result);
+        setShowResult(true);
+      }
+      closeModal();
     } catch (error) {
       const err = formatErrorMessage(error);
       setErrorMessage(`withdraw token: ${err}`);
