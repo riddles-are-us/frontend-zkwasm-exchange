@@ -402,7 +402,8 @@ export default function Commands() {
       return action;
     }
 
-    const filteredMarkets = userState!.state.markets.filter(market => BigInt(market.market_id) === marketId);
+    // comment because of no market data in state
+    /*const filteredMarkets = userState!.state.markets.filter(market => BigInt(market.market_id) === marketId);
     const market = filteredMarkets[0];
     let tokenIndex = 0;
     let cost = 0n;
@@ -435,7 +436,7 @@ export default function Commands() {
       if(newLockBalance > MAX_64_BIT) {
         throw new Error("lock_balance overflow");
       }
-    }
+    }*/
 
     const position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
     if(position.balance < FEE) {
@@ -465,7 +466,7 @@ export default function Commands() {
         console.log("fee balance", after.player.data.positions[feeTokenIdx].balance, before.player.data.positions[feeTokenIdx].balance);
         return false;
       }
-
+      /*
       if(tokenIndex == 1) {
         if (BigInt(after.player.data.positions[tokenIndex].lock_balance - before.player.data.positions[tokenIndex].lock_balance) !== cost) {
           console.log("lock_balance", after.player.data.positions[tokenIndex].lock_balance, before.player.data.positions[tokenIndex].lock_balance);
@@ -477,7 +478,7 @@ export default function Commands() {
           return false;
         }
       }
-
+      */
       return true;
     });
 
@@ -518,7 +519,8 @@ export default function Commands() {
       return action;
     }
 
-    const filteredMarkets = userState!.state.markets.filter(market => BigInt(market.market_id) === marketId);
+    // comment because of no market data in state
+    /*const filteredMarkets = userState!.state.markets.filter(market => BigInt(market.market_id) === marketId);
     const market = filteredMarkets[0];
     let tokenIndex = 0;
     let cost = 0n;
@@ -543,7 +545,7 @@ export default function Commands() {
       if(newLockBalance > MAX_64_BIT) {
         throw new Error("lock_balance overflow");
       }
-    }
+    }*/
 
     const position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
     if(position.balance < FEE) {
