@@ -13,6 +13,7 @@ import Footer from "../components/Foot";
 import Nav from "../components/Nav";
 import Commands from "../components/Commands";
 import { MDBRow, MDBCol, MDBTypography } from 'mdb-react-ui-kit';
+import {get_server_admin_key} from "zkwasm-ts-server/src/config.js";
 
 const CMD_REGISTER_PLAYER = 4n;
 
@@ -24,6 +25,7 @@ export function Main() {
 
   function updateState() {
     if (connectState == ConnectState.Idle) {
+      dispatch(queryState(get_server_admin_key()));
       dispatch(queryState(l2account!.getPrivateKey()));
     } else if (connectState == ConnectState.Init) {
       dispatch(queryInitialState("1"));
@@ -33,6 +35,7 @@ export function Main() {
 
   useEffect(() => {
     if (l2account && connectState == ConnectState.Init) {
+      dispatch(queryState(get_server_admin_key()));
       dispatch(queryState(l2account!.getPrivateKey()));
     } else {
       dispatch(queryInitialState("1"));
@@ -52,6 +55,12 @@ export function Main() {
       dispatch(sendTransaction({
         cmd: command,
         prikey: l2account!.getPrivateKey()
+      }));
+
+      // register the server admin
+      dispatch(sendTransaction({
+        cmd: command,
+        prikey: get_server_admin_key()
       }));
     }
   }, [connectState]);
