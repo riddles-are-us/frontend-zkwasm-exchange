@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MDBBtn, MDBContainer, MDBRow, MDBCol, MDBIcon } from 'mdb-react-ui-kit';
 import { useAppSelector, useAppDispatch } from "../app/hooks";
 import { sendTransaction } from "../request";
-import { createCommand, LeHexBN, query } from "zkwasm-minirollup-rpc";
+import { createCommand, LeHexBN } from "zkwasm-minirollup-rpc";
 import { selectUserState } from '../data/state';
 import { address2BigUint64Array } from "../utils/transaction";
 import { AccountSlice } from "zkwasm-minirollup-browser";
@@ -19,8 +19,10 @@ import TransferModal from "../modals/TransferModal";
 import DepositTokenModal from "../modals/DepositTokenModal";
 import { queryState } from "../request";
 import { Order } from "../data/state";
-import { GetBaseProvider } from 'zkwasm-minirollup-browser/src/provider';
+import { get_server_admin_key } from "zkwasm-ts-server/src/config.js";
+import { getNonce } from "../utils/transaction";
 
+const PRECISION = BigInt(1e9);
 const MAX_64_BIT = BigInt('9223372036854775807');
 const FEE = 3;
 const FEE_TOKEN_INDEX = 0;
@@ -59,26 +61,30 @@ export default function Commands() {
 
   const nonce = userState?.player?.nonce || 0;
 
-  const handleAddToken = async (tokenIndex: bigint, address: string) => {
+  const addToken = async (tokenIndex: bigint, address: string) => {
     if(!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       setShowAddTokenModal(false);
+      return;
     }
 
     let addr = address2BigUint64Array(address);
     let params = [tokenIndex];
     params.push(...addr);
+
+    const key = get_server_admin_key();
+    const nonce = await getNonce(key);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_ADD_TOKEN, params),
-        prikey: l2account!.getPrivateKey(),
+        prikey: key,
       })
     );
 
     if (sendTransaction.fulfilled.match(action)) {
-      // positions' length is always 2 in state.player in current backend
-      // we can't get token if token's index > 2
+      const infoMessage: string = "Token added successfully!";
+      return infoMessage;
     } else if(sendTransaction.rejected.match(action)) {
       throw Error("Error: " +  action.payload);
     }
@@ -89,47 +95,50 @@ export default function Commands() {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       setShowUpdateTokenModal(false);
+      return;
     }
 
     let addr = address2BigUint64Array(address);
     let params = [tokenIndex];
     params.push(...addr);
+
+    const key = get_server_admin_key();
+    const nonce = await getNonce(key);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_UPDATE_TOKEN, params),
-        prikey: l2account!.getPrivateKey(),
+        prikey: key,
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
-      // positions' length is always 2 in state.player in current backend
-      // we can't get token info if token's index > 2
+      const infoMessage: string = "Token updated successfully!";
+      return infoMessage;
     } else if(sendTransaction.rejected.match(action)) {
       throw Error("Error: " +  action.payload);
     }
   }
 
-  const depositToken = async (tokenIdx: bigint, amount: bigint) => {
+  const depositToken = async (pid: string, tokenIdx: bigint, amount: bigint) => {
     if(!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       setShowDepositTokenModal(false);
+      return;
     }
+    const key = get_server_admin_key();
+    let pid2 = new LeHexBN(pid).toU64Array();
+    let params = [pid2[1], pid2[2], tokenIdx, amount];
 
-    let pid = new LeHexBN(query(l2account!.getPrivateKey()).pkx).toU64Array();
-    let params = [pid[1], pid[2], tokenIdx, amount];
+    const nonce = await getNonce(key);
     const action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_DEPOSIT_TOKEN, params),
-        prikey: l2account!.getPrivateKey(),
+        prikey: key,
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
-      // positions' length is always 2 in state.player in current backend
-      // we can't get token info if token's index > 2
-      const positions = action.payload.player.data.positions;
-      return "Success: tokenIndex0's balance is " + positions["0"].balance +
-        ", it's lock_balance is " + positions["0"].lock_balance + ". tokenIndex1's balance is "
-        + positions["1"].balance + ", it's lock_balance is " + positions["1"].lock_balance;
+      const infoMessage: string = "Token deposited successfully!";
+      return infoMessage;
     } else if(sendTransaction.rejected.match(action)) {
       throw new Error("Error: " +  action.payload);
     }
@@ -140,6 +149,7 @@ export default function Commands() {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       setShowWithdrawTokenModal(false);
+      return;
     }
 
     let addr = address2BigUint64Array(address);
@@ -153,12 +163,8 @@ export default function Commands() {
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
-      // positions' length is always 2 in state.player in current backend
-      // we can't get token info if token's index > 2
-      const positions = action.payload.player.data.positions;
-      return "Success: tokenIndex0's balance is " + positions["0"].balance +
-        ", it's lock_balance is " + positions["0"].lock_balance + ". tokenIndex1's balance is "
-        + positions["1"].balance + ", it's lock_balance is " + positions["1"].lock_balance;
+      const infoMessage: string = "Token withdrawed successfully!";
+      return infoMessage;
     } else if(sendTransaction.rejected.match(action)) {
       throw new Error("Error: " +  action.payload);
     }
@@ -169,23 +175,23 @@ export default function Commands() {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       setShowTransferModal(false);
+      return;
     }
 
     let pid2 = new LeHexBN(pid).toU64Array();
     let params = [pid2[1], pid2[2], tokenIdx, amount];
+
+    const key = get_server_admin_key();
+    const nonce = await getNonce(key);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_TRANSFER,  params),
-        prikey: l2account!.getPrivateKey(),
+        prikey: get_server_admin_key(),
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
-      // positions' length is always 2 in state.player in current backend
-      // we can't get token info if token's index > 2
-      const positions = action.payload.player.data.positions;
-      return "Success: tokenIndex0's balance is " + positions["0"].balance +
-        ", it's lock_balance is " + positions["0"].lock_balance + "tokenIndex1's balance is "
-        + positions["1"].balance + ", it's lock_balance is " + positions["1"].lock_balance;
+      const infoMessage: string = "Token transfered successfully!";
+      return infoMessage;
     } else if(sendTransaction.rejected.match(action)) {
       throw Error("Error: " +  action.payload);
     }
@@ -195,13 +201,16 @@ export default function Commands() {
     if(!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
+      return;
     }
 
     let params = [aOrderId, bOrderId, aActualAmount, bActualAmount];
+    const key = get_server_admin_key();
+    const nonce = await getNonce(key);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_ADD_TRADE, params),
-        prikey: l2account!.getPrivateKey(),
+        prikey: get_server_admin_key(),
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
@@ -212,14 +221,6 @@ export default function Commands() {
       throw Error("Error: " +  action.payload);
     }
   }
-
-  /*const getMarket() => {
-    /data/markets
-  };*/
-
-  /*const getCost = (incomingOrder: Order) => {
-    let cost = amount * price;
-  }*/
 
   const matchOrdersGetTradeParams = async (orders: Order[], incomingOrder: Order) => {
     let result = {aOrderId: 0n, bOrderId: 0n, aActualAmount: 0n, bActualAmount: 0n};
@@ -370,7 +371,6 @@ export default function Commands() {
   async function orderCheck(f: ()=> any, check:(before: any, after: any) => boolean) {
     // Query state before placing the market order
     let before = await dispatch(queryState(l2account!.getPrivateKey()));
-
     const action = await f();
 
     // Query state after placing the market order
@@ -402,25 +402,53 @@ export default function Commands() {
       return action;
     }
 
-    let cost = 0;
-    let lastDealPrice = 0;
-    /*if (flag === BigInt(FLAG_BUY)) {  // If it's a Buy order
-        if (aTokenAmount !== 0n) {
-            cost = aTokenAmount;  // For Buy orders, directly use aTokenAmount as the cost
-        } else {
-            bTokenAmount * market.last_deal_price;
-            cost = bTokenAmount * lastDealPrice * 2;  // If aTokenAmount is 0, calculate the cost using bTokenAmount and lastDealPrice (multiplied by 2)
+    const filteredMarkets = userState!.state.markets.filter(market => BigInt(market.market_id) === marketId);
+    const market = filteredMarkets[0];
+    let tokenIndex = 0;
+    let cost = 0n;
+    if (flag === BigInt(FLAG_BUY)) {  // If it's a Buy order
+      tokenIndex = market.token_a;
+      if (aTokenAmount !== 0n) {
+        cost = aTokenAmount;
+      } else {
+        cost = bTokenAmount * BigInt(market.last_deal_price) * 2n;
+        if(cost > MAX_64_BIT) {
+          throw new Error("cost overflow");
         }
+      }
     } else if (flag === BigInt(FLAG_SELL)) {  // If it's a Sell order
-        if (bTokenAmount !== 0n) {
-            cost = bTokenAmount;  // For Sell orders, directly use bTokenAmount as the cost
-        } else {
-            cost = (aTokenAmount * 2 * precision) / lastDealPrice;  // If bTokenAmount is 0, calculate the cost using aTokenAmount, precision, and lastDealPrice
-        }
-    }*/
+      tokenIndex = market.token_b;
+      if (bTokenAmount !== 0n) {
+          cost = bTokenAmount;
+      } else {
+          cost = (aTokenAmount * 2n * PRECISION) / BigInt(market.last_deal_price);
+      }
+    }
+
+    // positions' length is 2 now
+    if(tokenIndex == 0 || tokenIndex == 1) {
+      const position = userState!.player!.data.positions[tokenIndex];
+      if(BigInt(position.balance) < cost) {
+        throw new Error("Insufficient balance");
+      }
+      const newLockBalance = BigInt(position.lock_balance) + cost;
+      if(newLockBalance > MAX_64_BIT) {
+        throw new Error("lock_balance overflow");
+      }
+    }
+
+    const position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
+    if(position.balance < FEE) {
+      throw new Error("Insufficient fee balance");
+    }
+    const newLockBalance = position.lock_balance + FEE;
+    if(BigInt(newLockBalance) > MAX_64_BIT) {
+      throw new Error("fee lock_balance overflow");
+    }
 
     const action = await orderCheck(f, (before: any, after: any): boolean => {
-      let tokenIdx = 0;
+      let feeBalanceChange = BigInt(FEE);
+      let feeTokenIdx = FEE_TOKEN_INDEX;
 
       if ((before.state?.order_id_counter ?? 0) + 1 !== (after.state?.order_id_counter ?? 0)) {
         console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
@@ -428,25 +456,26 @@ export default function Commands() {
       }
 
       // FEE_TOKEN_INDEX = 0, token index 0 should consider processing fee
-      if (after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance !== FEE + cost) {
-        console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-        return false;
-      }
-      if (before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance !== FEE + cost) {
-        console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
+      if (BigInt(after.player.data.positions[feeTokenIdx].lock_balance - before.player.data.positions[feeTokenIdx].lock_balance) !== feeBalanceChange) {
+        console.log("fee lock_balance", after.player.data.positions[feeTokenIdx].lock_balance, before.player.data.positions[feeTokenIdx].lock_balance);
         return false;
       }
 
-      tokenIdx = 1;
-
-      if (after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance !== cost) {
-        console.log("lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+      if (BigInt(before.player.data.positions[feeTokenIdx].balance - after.player.data.positions[feeTokenIdx].balance) !== feeBalanceChange) {
+        console.log("fee balance", after.player.data.positions[feeTokenIdx].balance, before.player.data.positions[feeTokenIdx].balance);
         return false;
       }
 
-      if (before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance !== cost) {
-        console.log("balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
-        return false;
+      if(tokenIndex == 1) {
+        if (BigInt(after.player.data.positions[tokenIndex].lock_balance - before.player.data.positions[tokenIndex].lock_balance) !== cost) {
+          console.log("lock_balance", after.player.data.positions[tokenIndex].lock_balance, before.player.data.positions[tokenIndex].lock_balance);
+          return false;
+        }
+
+        if (BigInt(before.player.data.positions[tokenIndex].balance - after.player.data.positions[tokenIndex].balance) !== cost) {
+          console.log("balance", after.player.data.positions[tokenIndex].balance, before.player.data.positions[tokenIndex].balance);
+          return false;
+        }
       }
 
       return true;
@@ -461,9 +490,8 @@ export default function Commands() {
 
       // Try match orders. If matched, get addTrade parameters
       const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
-
-      successMessage += " " + addTradeResult;
+      //const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+      //successMessage += " " + addTradeResult;
       return successMessage;
     } else if (sendTransaction.rejected.match(action)) {
       throw new Error("Error: " + action.payload);
@@ -478,29 +506,75 @@ export default function Commands() {
       return;
     }
 
-    // Query state before placing the limit order
-    let before = await dispatch(queryState(l2account!.getPrivateKey()));
-
     // Send transaction to add limit order
-    let params = [marketId, flag, limitPrice, amount];
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_ADD_LIMIT_ORDER, params),
-        prikey: l2account!.getPrivateKey(),
-      })
-    );
+    let f = async () => {
+      let params = [marketId, flag, limitPrice, amount];
+      let action = await dispatch(
+        sendTransaction({
+          cmd: createCommand(BigInt(nonce), CMD_ADD_LIMIT_ORDER, params),
+          prikey: l2account!.getPrivateKey(),
+        })
+      );
+      return action;
+    }
+
+    const filteredMarkets = userState!.state.markets.filter(market => BigInt(market.market_id) === marketId);
+    const market = filteredMarkets[0];
+    let tokenIndex = 0;
+    let cost = 0n;
+    if (flag === BigInt(FLAG_BUY)) {  // If it's a Buy order
+      tokenIndex = market.token_a;
+      cost = amount * limitPrice;
+      if(cost > MAX_64_BIT) {
+        throw new Error("cost overflow");
+      }
+    } else if (flag === BigInt(FLAG_SELL)) {  // If it's a Sell order
+      tokenIndex = market.token_b;
+      cost = amount;
+    }
+
+    // positions' length is 2 now
+    if(tokenIndex == 0 || tokenIndex == 1) {
+      const position = userState!.player!.data.positions[tokenIndex];
+      if(BigInt(position.balance) < cost) {
+        throw new Error("Insufficient balance");
+      }
+      const newLockBalance = BigInt(position.lock_balance) + cost;
+      if(newLockBalance > MAX_64_BIT) {
+        throw new Error("lock_balance overflow");
+      }
+    }
+
+    const position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
+    if(position.balance < FEE) {
+      throw new Error("Insufficient fee balance");
+    }
+    const newLockBalance = position.lock_balance + FEE;
+    if(BigInt(newLockBalance) > MAX_64_BIT) {
+      throw new Error("fee lock_balance overflow");
+    }
+
+    // Validate if the state has changed correctly
+    let action = await orderCheck(f, (before, after): boolean => {
+      let feeBalanceChange = BigInt(FEE);
+
+      if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 != ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
+        return false;
+      }
+      if (BigInt(after.player.data.positions[FEE_TOKEN_INDEX].lock_balance - before.player.data.positions[FEE_TOKEN_INDEX].lock_balance) != feeBalanceChange) {
+          return false;
+      }
+      if (BigInt(before.player.data.positions[FEE_TOKEN_INDEX].balance - after.player.data.positions[FEE_TOKEN_INDEX].balance) != feeBalanceChange) {
+        return false;
+      }
+      return true;
+    });
+    if (!action) {
+      throw new Error("orderCheck failed");
+    }
 
     let successMessage = "";
     if (sendTransaction.fulfilled.match(action)) {
-      // Query the state after placing the limit order
-      let after = await dispatch(queryState(l2account!.getPrivateKey()));
-
-      // Validate if the state has changed correctly
-      let checkResult = orderCheck(before.payload, after.payload);
-      if (!checkResult) {
-        throw new Error("orderCheck failed");
-      }
-
       // Return success message along with the result
       const orders = action.payload.state.orders;
       const latestOrder = orders[orders.length - 1];
@@ -508,12 +582,11 @@ export default function Commands() {
 
       // Try match orders. If matched, get addTrade parameters
       const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
-
-      successMessage += " " + addTradeResult;
+      //const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+      //successMessage += " " + addTradeResult;
       return successMessage;
     } else if (sendTransaction.rejected.match(action)) {
-      throw Error("Error: " + action.payload);
+      throw Error(String(action.payload));
     }
   };
 
@@ -522,6 +595,7 @@ export default function Commands() {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       setShowCancelOrderModal(false);
+      return;
     }
 
     let params = [orderId];
@@ -547,13 +621,16 @@ export default function Commands() {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       setShowAddMarketModal(false);
+      return;
     }
 
     let params = [tokenAIdx, tokenBIdx, lastPrice];
+    const key = get_server_admin_key();
+    const nonce = await getNonce(key);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_ADD_MARKET, params),
-        prikey: l2account!.getPrivateKey(),
+        prikey: get_server_admin_key(),
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
@@ -569,17 +646,20 @@ export default function Commands() {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       setShowCloseMarketModal(false);
+      return;
     }
 
     let params = [marketId];
+    const key = get_server_admin_key();
+    const nonce = await getNonce(key);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_CLOSE_MARKET, params),
-        prikey: l2account!.getPrivateKey(),
+        prikey: get_server_admin_key(),
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
-      // no market open/close status in state
+      return "Market closed successfully!";
     } else if(sendTransaction.rejected.match(action)) {
       throw Error("Error: " +  action.payload);
     }
@@ -660,7 +740,7 @@ export default function Commands() {
       <AddTokenModal
         show={showAddTokenModal}
         onClose={() => setShowAddTokenModal(false)}
-        handler={handleAddToken}
+        handler={addToken}
       />
       <UpdateTokenModal
         show={showUpdateTokenModal}
