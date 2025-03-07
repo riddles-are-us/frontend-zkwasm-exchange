@@ -19,7 +19,7 @@ async function queryConfigI() {
   }
 }
 
-async function queryStateI(prikey: string) {
+export async function queryStateI(prikey: string) {
   try {
     const data: any = await rpc.queryState(prikey);
     return JSON.parse(data.data);
@@ -43,7 +43,6 @@ async function queryStateI(prikey: string) {
   }
 }
 
-
 export const getConfig = createAsyncThunk(
   'client/getConfig',
   async () => {
@@ -54,21 +53,6 @@ export const getConfig = createAsyncThunk(
 )
 
 export const SERVER_TICK_TO_SECOND = 5;
-
-interface UserState<P, S> {
-  player: P | null,
-  state: S,
-}
-
-interface SendTransactionParams {
-    cmd: Array<bigint>;
-    prikey: string;
-}
-
-interface QueryStateParams {
-    prikey: string;
-}
-
 
 export const sendTransaction = createAsyncThunk(
   'client/sendTransaction',

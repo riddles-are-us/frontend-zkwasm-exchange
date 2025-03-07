@@ -1,4 +1,5 @@
 import BN from "bn.js";
+import { queryStateI } from "../request";
 
 export function removeHexPrefix(value: string): string {
   return value.startsWith("0x") ? value.slice(2) : value;
@@ -75,4 +76,13 @@ export function address2BigUint64Array(address: string): BigUint64Array {
   let sndLimb = BigInt('0x' + bytesToHex(a.slice(4,12).reverse()));
   let thirdLimb = BigInt('0x' + bytesToHex(a.slice(12, 20).reverse()));
   return new BigUint64Array([firstLimb<<32n, sndLimb, thirdLimb]);
+}
+
+export async function getNonce(processingKey: string): Promise<bigint> {
+  let state:any = await queryStateI(processingKey);
+  let nonce = 0n;
+  if (state.player) {
+    nonce = BigInt(state.player.nonce);
+  }
+  return nonce;
 }
