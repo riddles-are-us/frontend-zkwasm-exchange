@@ -23,6 +23,15 @@ export interface GlobalState {
   event_id_counter: number;
   orders: Order[];
   trades: Trade[];
+  markets: Market[];
+}
+
+export interface Market {
+  market_id: number;
+  status: number;
+  token_a: number;
+  token_b: number;
+  last_deal_price: number;
 }
 
 export interface Order {
