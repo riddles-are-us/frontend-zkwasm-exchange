@@ -113,7 +113,7 @@ export const queryInitialState = createAsyncThunk(
 export async function queryMarketI() {
   try {
     const state: any = await rpc.queryData("markets");
-    return JSON.parse(state.data);
+    return state.data;
   } catch (error: any) {
     if (error.response) {
       // The request was made and the server responded with a status code

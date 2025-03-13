@@ -6,7 +6,7 @@ import "./style.scss";
 import { selectConnectState } from "../data/state";
 import { useAppSelector, useAppDispatch } from "../app/hooks";
 import { AccountSlice, ConnectState } from "zkwasm-minirollup-browser";
-import { queryInitialState, queryState, sendTransaction } from "../request";
+import { queryInitialState, queryState, sendTransaction, queryMarket } from "../request";
 import { createCommand } from "zkwasm-minirollup-rpc";
 import { MarketPage } from "../components/MarketPage";
 import Footer from "../components/Foot";
@@ -25,6 +25,7 @@ export function Main() {
   const [inc, setInc] = useState(0);
 
   function updateState() {
+    dispatch(queryMarket());
     if (connectState == ConnectState.Idle) {
       dispatch(queryState(server_admin_key));
       dispatch(queryState(l2account!.getPrivateKey()));
@@ -35,6 +36,7 @@ export function Main() {
   }
 
   useEffect(() => {
+    dispatch(queryMarket());
     if (l2account && connectState == ConnectState.Init) {
       dispatch(queryState(server_admin_key));
       dispatch(queryState(l2account!.getPrivateKey()));
