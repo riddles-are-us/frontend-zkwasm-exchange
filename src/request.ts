@@ -109,3 +109,40 @@ export const queryInitialState = createAsyncThunk(
     }
   }
 );
+
+export async function queryMarketI() {
+  try {
+    const state: any = await rpc.queryData("markets");
+    return JSON.parse(state.data);
+  } catch (error: any) {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      if (error.response.status === 500) {
+        throw new Error("QueryMarketError");
+      } else {
+        throw new Error("UnknownError");
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+      // http.ClientRequest in node.js
+      throw new Error("No response was received from the server, please check your network connection.");
+    } else {
+      throw new Error("UnknownError");
+    }
+  }
+}
+
+export const queryMarket = createAsyncThunk(
+  'client/queryMarket',
+  async (_, { rejectWithValue }) => {
+    try {
+      const state: any = await queryMarketI();
+      console.log("(Data-QueryMarket)", state);
+      return state;
+    } catch (err: any) {
+      return rejectWithValue(err);
+    }
+  }
+);

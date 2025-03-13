@@ -26,8 +26,7 @@
     "styled-components": "^6.1.14",
     "zkwasm-minirollup-browser": "github:DelphinusLab/zkWasm-minirollup-browser",
     "zkwasm-minirollup-rpc": "github:DelphinusLab/zkWasm-minirollup-rpc",
-    "zkwasm-service-helper": "github:DelphinusLab/zkWasm-service-helper",
-    "zkwasm-ts-server": "https://gitpkg.vercel.app/DelphinusLab/zkwasm-mini-rollup/ts?release-v1"
+    "zkwasm-service-helper": "github:DelphinusLab/zkWasm-service-helper"
   },
   "scripts": {
     "start": "npx react-app-rewired start",
