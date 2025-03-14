@@ -111,7 +111,7 @@ const WithdrawTokenModal: React.FC<WithdrawTokenProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter withdraw Address as uint256 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter Recipient Address as uint256 hexadecimal (e.g., 0x12...)"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   required
