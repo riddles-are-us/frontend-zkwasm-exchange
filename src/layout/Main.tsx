@@ -12,6 +12,7 @@ import { MarketPage } from "../components/MarketPage";
 import Footer from "../components/Foot";
 import Nav from "../components/Nav";
 import Commands from "../components/Commands";
+import PlayerInfo from "../components/PlayerInfo";
 import { MDBRow, MDBCol, MDBTypography } from 'mdb-react-ui-kit';
 
 const CMD_REGISTER_PLAYER = 4n;
@@ -27,7 +28,6 @@ export function Main() {
   function updateState() {
     dispatch(queryMarket());
     if (connectState == ConnectState.Idle) {
-      dispatch(queryState(server_admin_key));
       dispatch(queryState(l2account!.getPrivateKey()));
     } else if (connectState == ConnectState.Init) {
       dispatch(queryInitialState("1"));
@@ -38,7 +38,6 @@ export function Main() {
   useEffect(() => {
     dispatch(queryMarket());
     if (l2account && connectState == ConnectState.Init) {
-      dispatch(queryState(server_admin_key));
       dispatch(queryState(l2account!.getPrivateKey()));
     } else {
       dispatch(queryInitialState("1"));
@@ -72,6 +71,17 @@ export function Main() {
     <>
     {/* Navigation Bar */}
     <Nav />
+
+    {/* PlayerInfo Section */}
+    <MDBRow className="mt-4">
+      <MDBCol>
+        {/* Title for the Command Buttons Section */}
+        <MDBTypography tag="h3" className="text-center mb-4">
+          Wallet Player Balance
+        </MDBTypography>
+        <PlayerInfo />
+      </MDBCol>
+    </MDBRow>
 
     {/* Command Buttons Section */}
     <MDBRow className="mt-4">
