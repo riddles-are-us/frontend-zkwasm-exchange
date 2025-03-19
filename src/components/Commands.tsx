@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { MDBBtn, MDBContainer, MDBRow, MDBCol, MDBIcon } from 'mdb-react-ui-kit';
 import { useAppSelector, useAppDispatch } from "../app/hooks";
-import { sendTransaction } from "../request";
+import { sendTransaction, queryStateI, queryState } from "../request";
 import { createCommand, LeHexBN } from "zkwasm-minirollup-rpc";
-import { selectUserState } from '../data/state';
-import { address2BigUint64Array } from "../utils/transaction";
+import { selectUserState, Order } from '../data/state';
+import { address2BigUint64Array, getNonce } from "../utils/transaction";
 import { AccountSlice } from "zkwasm-minirollup-browser";
 import { ResultModal } from "../modals/ResultModal";
 import AddTokenModal from "../modals/AddTokenModal";
@@ -17,10 +17,8 @@ import AddMarketModal from "../modals/AddMarketModal";
 import CloseMarketModal from "../modals/CloseMarketModal";
 import TransferModal from "../modals/TransferModal";
 import DepositTokenModal from "../modals/DepositTokenModal";
-import { queryState } from "../request";
-import { Order } from "../data/state";
 import { get_server_admin_key } from "zkwasm-ts-server/src/config.js";
-import { getNonce } from "../utils/transaction";
+import { selectMarketInfo } from "../data/market";
 
 const PRECISION = BigInt(1e9);
 const MAX_64_BIT = BigInt('9223372036854775807');
@@ -41,11 +39,13 @@ const CMD_CLOSE_MARKET = 8n;
 const CMD_TRANSFER = 9n;
 const CMD_WITHDRAW = 10n;
 const CMD_ADD_TRADE = 11n;
+const SEVER_ADMIN_KEY = "1234567";
 
 export default function Commands() {
   const dispatch = useAppDispatch();
   const userState = useAppSelector(selectUserState);
   const l2account = useAppSelector(AccountSlice.selectL2Account);
+  const marketInfo = useAppSelector(selectMarketInfo);
   const [infoMessage, setInfoMessage] = useState("");
   const [showResult, setShowResult] = useState(false);
   const [showAddTokenModal, setShowAddTokenModal] = useState(false);
@@ -73,12 +73,11 @@ export default function Commands() {
     let params = [tokenIndex];
     params.push(...addr);
 
-    const key = get_server_admin_key();
-    const nonce = await getNonce(key);
+    const nonce = await getNonce(SEVER_ADMIN_KEY);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_ADD_TOKEN, params),
-        prikey: key,
+        prikey: SEVER_ADMIN_KEY,
       })
     );
 
@@ -102,12 +101,11 @@ export default function Commands() {
     let params = [tokenIndex];
     params.push(...addr);
 
-    const key = get_server_admin_key();
-    const nonce = await getNonce(key);
+    const nonce = await getNonce(SEVER_ADMIN_KEY);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_UPDATE_TOKEN, params),
-        prikey: key,
+        prikey: SEVER_ADMIN_KEY,
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
@@ -125,15 +123,14 @@ export default function Commands() {
       setShowDepositTokenModal(false);
       return;
     }
-    const key = get_server_admin_key();
     let pid2 = new LeHexBN(pid).toU64Array();
     let params = [pid2[1], pid2[2], tokenIdx, amount];
 
-    const nonce = await getNonce(key);
+    const nonce = await getNonce(SEVER_ADMIN_KEY);
     const action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_DEPOSIT_TOKEN, params),
-        prikey: key,
+        prikey: SEVER_ADMIN_KEY,
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
@@ -166,7 +163,13 @@ export default function Commands() {
       const infoMessage: string = "Token withdrawed successfully!";
       return infoMessage;
     } else if(sendTransaction.rejected.match(action)) {
-      throw new Error("Error: " +  action.payload);
+      let message = "";
+      if(String(action.payload).includes("BalanceNotEnough")) {
+        const index = tokenIndex.toString();
+        const balance = userState!.player!.data.positions[index].balance;
+        message = ". Wallet player's balance for Token " + index + ": " + balance;
+      }
+      throw new Error("Error: " +  action.payload + message);
     }
   }
 
@@ -181,19 +184,25 @@ export default function Commands() {
     let pid2 = new LeHexBN(pid).toU64Array();
     let params = [pid2[1], pid2[2], tokenIdx, amount];
 
-    const key = get_server_admin_key();
-    const nonce = await getNonce(key);
+    const nonce = await getNonce(SEVER_ADMIN_KEY);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_TRANSFER,  params),
-        prikey: get_server_admin_key(),
+        prikey: SEVER_ADMIN_KEY,
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
       const infoMessage: string = "Token transfered successfully!";
       return infoMessage;
     } else if(sendTransaction.rejected.match(action)) {
-      throw Error("Error: " +  action.payload);
+      let message = "";
+      let state:any = await queryStateI(SEVER_ADMIN_KEY);
+      if(String(action.payload).includes("BalanceNotEnough")) {
+        const index = tokenIdx.toString();
+        const balance = state!.player!.data.positions[index].balance;
+        message = ". Server admin's balance for Token " + index + ": " + balance;
+      }
+      throw new Error("Error: " +  action.payload + message);
     }
   }
 
@@ -201,6 +210,16 @@ export default function Commands() {
     if(!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
+      return;
+    }
+    const aOrder = userState!.state.orders.filter(order => order.id === Number(aOrderId));
+    const bOrder = userState!.state.orders.filter(order => order.id === Number(bOrderId));
+    if(aOrder.length === 0 || bOrder.length === 0) {
+      console.log("Order not found");
+      return;
+    }
+    if(JSON.stringify(aOrder[0].pid) == JSON.stringify(bOrder[0].pid)) {
+      console.log("Same player");
       return;
     }
 
@@ -403,26 +422,26 @@ export default function Commands() {
     }
 
     // comment because of no market data in state
-    /*const filteredMarkets = userState!.state.markets.filter(market => BigInt(market.market_id) === marketId);
+    const filteredMarkets = marketInfo.filter(market => BigInt(market.marketId) === marketId);
     const market = filteredMarkets[0];
     let tokenIndex = 0;
     let cost = 0n;
     if (flag === BigInt(FLAG_BUY)) {  // If it's a Buy order
-      tokenIndex = market.token_a;
+      tokenIndex = market.tokenA;
       if (aTokenAmount !== 0n) {
         cost = aTokenAmount;
       } else {
-        cost = bTokenAmount * BigInt(market.last_deal_price) * 2n;
+        cost = bTokenAmount * BigInt(market.lastPrice) * 2n;
         if(cost > MAX_64_BIT) {
           throw new Error("cost overflow");
         }
       }
     } else if (flag === BigInt(FLAG_SELL)) {  // If it's a Sell order
-      tokenIndex = market.token_b;
+      tokenIndex = market.tokenB;
       if (bTokenAmount !== 0n) {
           cost = bTokenAmount;
       } else {
-          cost = (aTokenAmount * 2n * PRECISION) / BigInt(market.last_deal_price);
+          cost = (aTokenAmount * 2n * PRECISION) / BigInt(market.lastPrice);
       }
     }
 
@@ -436,7 +455,7 @@ export default function Commands() {
       if(newLockBalance > MAX_64_BIT) {
         throw new Error("lock_balance overflow");
       }
-    }*/
+    }
 
     const position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
     if(position.balance < FEE) {
@@ -466,7 +485,7 @@ export default function Commands() {
         console.log("fee balance", after.player.data.positions[feeTokenIdx].balance, before.player.data.positions[feeTokenIdx].balance);
         return false;
       }
-      /*
+
       if(tokenIndex == 1) {
         if (BigInt(after.player.data.positions[tokenIndex].lock_balance - before.player.data.positions[tokenIndex].lock_balance) !== cost) {
           console.log("lock_balance", after.player.data.positions[tokenIndex].lock_balance, before.player.data.positions[tokenIndex].lock_balance);
@@ -478,7 +497,6 @@ export default function Commands() {
           return false;
         }
       }
-      */
       return true;
     });
 
@@ -491,8 +509,8 @@ export default function Commands() {
 
       // Try match orders. If matched, get addTrade parameters
       const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      //const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
-      //successMessage += " " + addTradeResult;
+      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+      successMessage += " " + addTradeResult;
       return successMessage;
     } else if (sendTransaction.rejected.match(action)) {
       throw new Error("Error: " + action.payload);
@@ -520,18 +538,18 @@ export default function Commands() {
     }
 
     // comment because of no market data in state
-    /*const filteredMarkets = userState!.state.markets.filter(market => BigInt(market.market_id) === marketId);
+    const filteredMarkets = marketInfo.filter(market => BigInt(market.marketId) === marketId);
     const market = filteredMarkets[0];
     let tokenIndex = 0;
     let cost = 0n;
     if (flag === BigInt(FLAG_BUY)) {  // If it's a Buy order
-      tokenIndex = market.token_a;
+      tokenIndex = market.tokenA;
       cost = amount * limitPrice;
       if(cost > MAX_64_BIT) {
         throw new Error("cost overflow");
       }
     } else if (flag === BigInt(FLAG_SELL)) {  // If it's a Sell order
-      tokenIndex = market.token_b;
+      tokenIndex = market.tokenB;
       cost = amount;
     }
 
@@ -545,7 +563,7 @@ export default function Commands() {
       if(newLockBalance > MAX_64_BIT) {
         throw new Error("lock_balance overflow");
       }
-    }*/
+    }
 
     const position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
     if(position.balance < FEE) {
@@ -561,19 +579,19 @@ export default function Commands() {
       let feeBalanceChange = BigInt(FEE);
 
       if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 != ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
+        console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
         return false;
       }
       if (BigInt(after.player.data.positions[FEE_TOKEN_INDEX].lock_balance - before.player.data.positions[FEE_TOKEN_INDEX].lock_balance) != feeBalanceChange) {
-          return false;
+        console.log("fee lock_balance", after.player.data.positions[FEE_TOKEN_INDEX].lock_balance, before.player.data.positions[FEE_TOKEN_INDEX].lock_balance);
+        return false;
       }
       if (BigInt(before.player.data.positions[FEE_TOKEN_INDEX].balance - after.player.data.positions[FEE_TOKEN_INDEX].balance) != feeBalanceChange) {
+        console.log("fee balance", after.player.data.positions[FEE_TOKEN_INDEX].balance, before.player.data.positions[FEE_TOKEN_INDEX].balance);
         return false;
       }
       return true;
     });
-    if (!action) {
-      throw new Error("orderCheck failed");
-    }
 
     let successMessage = "";
     if (sendTransaction.fulfilled.match(action)) {
@@ -584,8 +602,8 @@ export default function Commands() {
 
       // Try match orders. If matched, get addTrade parameters
       const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      //const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
-      //successMessage += " " + addTradeResult;
+      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+      successMessage += " " + addTradeResult;
       return successMessage;
     } else if (sendTransaction.rejected.match(action)) {
       throw Error(String(action.payload));
