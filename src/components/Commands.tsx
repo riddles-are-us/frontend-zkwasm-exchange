@@ -446,57 +446,76 @@ export default function Commands() {
     }
 
     // positions' length is 2 now
-    if(tokenIndex == 0 || tokenIndex == 1) {
-      const position = userState!.player!.data.positions[tokenIndex];
-      if(BigInt(position.balance) < cost) {
-        throw new Error("Insufficient balance");
-      }
-      const newLockBalance = BigInt(position.lock_balance) + cost;
-      if(newLockBalance > MAX_64_BIT) {
-        throw new Error("lock_balance overflow");
-      }
+    let position = userState!.player!.data.positions[tokenIndex];
+    if(BigInt(position.balance) < cost) {
+      throw new Error("Insufficient balance. cost is " + cost + ". balance is " + position.balance);
+    }
+    let newLockBalance = BigInt(position.lock_balance) + cost;
+    if(newLockBalance > MAX_64_BIT) {
+      throw new Error("lock_balance overflow");
     }
 
-    const position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
+    position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
     if(position.balance < FEE) {
       throw new Error("Insufficient fee balance");
     }
-    const newLockBalance = position.lock_balance + FEE;
+    newLockBalance = BigInt(position.lock_balance + FEE);
     if(BigInt(newLockBalance) > MAX_64_BIT) {
       throw new Error("fee lock_balance overflow");
     }
 
     const action = await orderCheck(f, (before: any, after: any): boolean => {
       let feeBalanceChange = BigInt(FEE);
-      let feeTokenIdx = FEE_TOKEN_INDEX;
 
-      if ((before.state?.order_id_counter ?? 0) + 1 !== (after.state?.order_id_counter ?? 0)) {
+      if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 != ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
         console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
         return false;
       }
 
-      // FEE_TOKEN_INDEX = 0, token index 0 should consider processing fee
-      if (BigInt(after.player.data.positions[feeTokenIdx].lock_balance - before.player.data.positions[feeTokenIdx].lock_balance) !== feeBalanceChange) {
-        console.log("fee lock_balance", after.player.data.positions[feeTokenIdx].lock_balance, before.player.data.positions[feeTokenIdx].lock_balance);
-        return false;
-      }
+      if (flag === BigInt(FLAG_BUY)) {
+        let tokenIdx = 0;
 
-      if (BigInt(before.player.data.positions[feeTokenIdx].balance - after.player.data.positions[feeTokenIdx].balance) !== feeBalanceChange) {
-        console.log("fee balance", after.player.data.positions[feeTokenIdx].balance, before.player.data.positions[feeTokenIdx].balance);
-        return false;
-      }
-
-      if(tokenIndex == 1) {
-        if (BigInt(after.player.data.positions[tokenIndex].lock_balance - before.player.data.positions[tokenIndex].lock_balance) !== cost) {
-          console.log("lock_balance", after.player.data.positions[tokenIndex].lock_balance, before.player.data.positions[tokenIndex].lock_balance);
+        if(bTokenAmount == 0n) {
+          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) != cost + feeBalanceChange) {
+            console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+            return false;
+          }
+          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) != cost + feeBalanceChange) {
+            console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
+            return false;
+          }
+        } else if(aTokenAmount == 0n){
+          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) != feeBalanceChange) {
+            console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+            return false;
+          }
+          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) != feeBalanceChange) {
+            console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
+            return false;
+          }
+        }
+      } else {
+        let tokenIdx = 0;
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) != feeBalanceChange) {
+          console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+          return false;
+        }
+        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) != feeBalanceChange) {
+          console.log("fee balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
           return false;
         }
 
-        if (BigInt(before.player.data.positions[tokenIndex].balance - after.player.data.positions[tokenIndex].balance) !== cost) {
-          console.log("balance", after.player.data.positions[tokenIndex].balance, before.player.data.positions[tokenIndex].balance);
+        tokenIdx = 1;
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) != cost) {
+          console.log("lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+          return false;
+        }
+        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) != cost) {
+          console.log("balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
           return false;
         }
       }
+
       return true;
     });
 
@@ -513,7 +532,12 @@ export default function Commands() {
       successMessage += " " + addTradeResult;
       return successMessage;
     } else if (sendTransaction.rejected.match(action)) {
-      throw new Error("Error: " + action.payload);
+      let message = "";
+      const index = tokenIndex.toString();
+      const balance = userState!.player!.data.positions[index].balance;
+      const lockBalance = userState!.player!.data.positions[index].balance;
+      message = ". Wallet player's balance for Token " + index + ": " + balance + ". Wallet player's lock balance for Token " + index + ": " + lockBalance;
+      throw new Error("Error: " +  action.payload + message);
     }
   };
 
@@ -554,22 +578,20 @@ export default function Commands() {
     }
 
     // positions' length is 2 now
-    if(tokenIndex == 0 || tokenIndex == 1) {
-      const position = userState!.player!.data.positions[tokenIndex];
-      if(BigInt(position.balance) < cost) {
-        throw new Error("Insufficient balance");
-      }
-      const newLockBalance = BigInt(position.lock_balance) + cost;
-      if(newLockBalance > MAX_64_BIT) {
-        throw new Error("lock_balance overflow");
-      }
+    let position = userState!.player!.data.positions[tokenIndex];
+    if(BigInt(position.balance) < cost) {
+      throw new Error("Insufficient balance");
+    }
+    let newLockBalance = BigInt(position.lock_balance) + cost;
+    if(newLockBalance > MAX_64_BIT) {
+      throw new Error("lock_balance overflow");
     }
 
-    const position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
+    position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
     if(position.balance < FEE) {
       throw new Error("Insufficient fee balance");
     }
-    const newLockBalance = position.lock_balance + FEE;
+    newLockBalance = BigInt(position.lock_balance + FEE);
     if(BigInt(newLockBalance) > MAX_64_BIT) {
       throw new Error("fee lock_balance overflow");
     }
@@ -582,13 +604,37 @@ export default function Commands() {
         console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
         return false;
       }
-      if (BigInt(after.player.data.positions[FEE_TOKEN_INDEX].lock_balance - before.player.data.positions[FEE_TOKEN_INDEX].lock_balance) != feeBalanceChange) {
-        console.log("fee lock_balance", after.player.data.positions[FEE_TOKEN_INDEX].lock_balance, before.player.data.positions[FEE_TOKEN_INDEX].lock_balance);
-        return false;
-      }
-      if (BigInt(before.player.data.positions[FEE_TOKEN_INDEX].balance - after.player.data.positions[FEE_TOKEN_INDEX].balance) != feeBalanceChange) {
-        console.log("fee balance", after.player.data.positions[FEE_TOKEN_INDEX].balance, before.player.data.positions[FEE_TOKEN_INDEX].balance);
-        return false;
+
+      if (flag === BigInt(FLAG_BUY)) {
+        let tokenIdx = 0;
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) != feeBalanceChange) {
+          console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+          return false;
+        }
+        if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) != feeBalanceChange) {
+          console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
+          return false;
+        }
+      } else {
+        let tokenIdx = 0;
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) != feeBalanceChange) {
+          console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+          return false;
+        }
+        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) != feeBalanceChange) {
+          console.log("fee balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
+          return false;
+        }
+
+        tokenIdx = 1;
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) != cost) {
+          console.log("lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+          return false;
+        }
+        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) != cost) {
+          console.log("balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
+          return false;
+        }
       }
       return true;
     });
@@ -606,7 +652,12 @@ export default function Commands() {
       successMessage += " " + addTradeResult;
       return successMessage;
     } else if (sendTransaction.rejected.match(action)) {
-      throw Error(String(action.payload));
+      let message = "";
+      const index = tokenIndex.toString();
+      const balance = userState!.player!.data.positions[index].balance;
+      const lockBalance = userState!.player!.data.positions[index].balance;
+      message = ". Wallet player's balance for Token " + index + ": " + balance + ". Wallet player's lock balance for Token " + index + ": " + lockBalance;
+      throw new Error("Error: " +  action.payload + message);
     }
   };
 
