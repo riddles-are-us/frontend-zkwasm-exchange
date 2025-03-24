@@ -206,16 +206,16 @@ export default function Commands() {
     }
   }
 
-  const addTrade = async (aOrderId: bigint, bOrderId: bigint, aActualAmount: bigint, bActualAmount: bigint) => {
+  const addTrade = async (orders: Order[], aOrderId: bigint, bOrderId: bigint, aActualAmount: bigint, bActualAmount: bigint) => {
     if(!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       return;
     }
-    const aOrder = userState!.state.orders.filter(order => order.id === Number(aOrderId));
-    const bOrder = userState!.state.orders.filter(order => order.id === Number(bOrderId));
+    const aOrder = orders.filter(order => order.id === Number(aOrderId));
+    const bOrder = orders.filter(order => order.id === Number(bOrderId));
     if(aOrder.length === 0 || bOrder.length === 0) {
-      console.log("Order not found");
+      console.log("Order not found. aOrderId is " + aOrderId + ", bOrderId is " + bOrderId);
       return;
     }
     if(JSON.stringify(aOrder[0].pid) == JSON.stringify(bOrder[0].pid)) {
@@ -292,7 +292,7 @@ export default function Commands() {
         }
 
         // Calculate the buy orders' expected amount based on the price
-        let aAmount = price * bActualAmount;
+        let aAmount = BigInt(price * bActualAmount) / PRECISION;
 
         if (aAmount > MAX_64_BIT) {
           console.log("price * b_token_amount overflow\n");
@@ -300,7 +300,7 @@ export default function Commands() {
         }
 
         // Ensure aAmount matches buy order's expected amount
-        if (aAmount !== aActualAmount) {
+        if (aAmount !== BigInt(aActualAmount)) {
           console.log("(price * sell order's expected amount) does not match buy order's expected amount\n");
           continue;
         }
@@ -362,7 +362,7 @@ export default function Commands() {
         }
 
         // Calculate the buy orders' expected amount based on the price
-        let aAmount = price * bActualAmount;
+        let aAmount = BigInt(price * bActualAmount) / PRECISION;
 
         if (aAmount > MAX_64_BIT) {
           console.log("price * b_token_amount overflow\n");
@@ -370,7 +370,7 @@ export default function Commands() {
         }
 
         // Ensure aAmount matches buy order's expected amount
-        if (aAmount !== aActualAmount) {
+        if (aAmount !== BigInt(aActualAmount)) {
           console.log("(price * sell order's expected amount) does not match buy order's expected amount\n");
           continue;
         }
@@ -528,8 +528,10 @@ export default function Commands() {
 
       // Try match orders. If matched, get addTrade parameters
       const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
-      successMessage += " " + addTradeResult;
+      const addTradeResult = await addTrade(orders, params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+      if(addTradeResult) {
+        successMessage += " " + addTradeResult;
+      }
       return successMessage;
     } else if (sendTransaction.rejected.match(action)) {
       let message = "";
@@ -568,7 +570,7 @@ export default function Commands() {
     let cost = 0n;
     if (flag === BigInt(FLAG_BUY)) {  // If it's a Buy order
       tokenIndex = market.tokenA;
-      cost = amount * limitPrice;
+      cost = amount * limitPrice / PRECISION;
       if(cost > MAX_64_BIT) {
         throw new Error("cost overflow");
       }
@@ -607,11 +609,11 @@ export default function Commands() {
 
       if (flag === BigInt(FLAG_BUY)) {
         let tokenIdx = 0;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) != feeBalanceChange) {
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) != cost + feeBalanceChange) {
           console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
           return false;
         }
-        if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) != feeBalanceChange) {
+        if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) != cost + feeBalanceChange) {
           console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
           return false;
         }
@@ -648,8 +650,10 @@ export default function Commands() {
 
       // Try match orders. If matched, get addTrade parameters
       const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
-      successMessage += " " + addTradeResult;
+      const addTradeResult = await addTrade(orders, params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+      if(addTradeResult) {
+        successMessage += " " + addTradeResult;
+      }
       return successMessage;
     } else if (sendTransaction.rejected.match(action)) {
       let message = "";
