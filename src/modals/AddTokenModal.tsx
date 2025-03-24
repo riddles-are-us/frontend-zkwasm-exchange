@@ -80,14 +80,14 @@ const AddTokenModal: React.FC<AddTokenProps> = ({
   return (
     <>
       <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
-        <MDBModalDialog>
+        <MDBModalDialog size="lg">
           <MDBModalContent>
             <MDBModalHeader>
               <h5 className="modal-title">Add Token</h5>
             </MDBModalHeader>
             <MDBModalBody>
               {errorMessage && <ErrorAlert message={errorMessage} onClose={() => setErrorMessage("")} />}
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Token index" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
@@ -97,7 +97,7 @@ const AddTokenModal: React.FC<AddTokenProps> = ({
                   required
                 />
               </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Token address" className="mb-3">
                 <input
                   type="text"
                   className="form-control"

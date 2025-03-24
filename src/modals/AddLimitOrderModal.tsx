@@ -89,14 +89,14 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
   return (
     <>
       <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
-        <MDBModalDialog>
+        <MDBModalDialog size="lg">
           <MDBModalContent>
             <MDBModalHeader>
               <h5 className="modal-title">Add Limit Order</h5>
             </MDBModalHeader>
             <MDBModalBody>
               {errorMessage && <ErrorAlert message={errorMessage} onClose={() => setErrorMessage("")} />}
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="MarketId" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
@@ -116,7 +116,7 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
                   <option value="0">Sell</option>
                 </Form.Select>
               </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="LimitPrice" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
@@ -126,7 +126,7 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
                   required
                 />
               </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Amount" className="mb-3">
                 <input
                   type="text"
                   className="form-control"

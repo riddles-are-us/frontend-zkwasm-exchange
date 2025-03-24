@@ -87,14 +87,14 @@ const TransferModal: React.FC<TransferProps> = ({
   return (
     <>
       <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
-        <MDBModalDialog>
+        <MDBModalDialog size="lg">
           <MDBModalContent>
             <MDBModalHeader>
               <h5 className="modal-title">Transfer Token</h5>
             </MDBModalHeader>
             <MDBModalBody>
               {errorMessage && <ErrorAlert message={errorMessage} onClose={() => setErrorMessage("")} />}
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Player id" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
@@ -104,7 +104,7 @@ const TransferModal: React.FC<TransferProps> = ({
                   required
                 />
               </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Token index" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
@@ -114,7 +114,7 @@ const TransferModal: React.FC<TransferProps> = ({
                   required
                 />
               </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Token amount" className="mb-3">
                 <input
                   type="text"
                   className="form-control"

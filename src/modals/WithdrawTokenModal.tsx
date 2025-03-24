@@ -90,14 +90,14 @@ const WithdrawTokenModal: React.FC<WithdrawTokenProps> = ({
   return (
     <>
       <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
-        <MDBModalDialog>
+        <MDBModalDialog size="lg">
           <MDBModalContent>
             <MDBModalHeader>
               <h5 className="modal-title">Withdraw Token</h5>
             </MDBModalHeader>
             <MDBModalBody>
               {errorMessage && <ErrorAlert message={errorMessage} onClose={() => setErrorMessage("")} />}
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Token index" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
@@ -107,7 +107,7 @@ const WithdrawTokenModal: React.FC<WithdrawTokenProps> = ({
                   required
                 />
               </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Recipient address" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
@@ -117,7 +117,7 @@ const WithdrawTokenModal: React.FC<WithdrawTokenProps> = ({
                   required
                 />
               </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Token amount" className="mb-3">
                 <input
                   type="text"
                   className="form-control"

@@ -67,14 +67,14 @@ const CancelOrderModal: React.FC<CancelOrderProps> = ({
   return (
     <>
       <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
-        <MDBModalDialog>
+        <MDBModalDialog size="lg">
           <MDBModalContent>
             <MDBModalHeader>
               <h5 className="modal-title">Cancel Order</h5>
             </MDBModalHeader>
             <MDBModalBody>
               {errorMessage && <ErrorAlert message={errorMessage} onClose={() => setErrorMessage("")} />}
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Order id" className="mb-3">
                 <input
                   type="text"
                   className="form-control"

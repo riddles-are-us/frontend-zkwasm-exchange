@@ -86,14 +86,14 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
   return (
     <>
       <MDBModal open={show} onClose={closeModal} staticBackdrop tabIndex='-1'>
-        <MDBModalDialog>
+        <MDBModalDialog size="lg">
           <MDBModalContent>
             <MDBModalHeader>
               <h5 className="modal-title">Add Market</h5>
             </MDBModalHeader>
             <MDBModalBody>
               {errorMessage && <ErrorAlert message={errorMessage} onClose={() => setErrorMessage("")} />}
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Token index A" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
@@ -103,7 +103,7 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
                   required
                 />
               </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="Token index B" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
@@ -113,7 +113,7 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
                   required
                 />
               </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <MDBInputGroup textBefore="LastPrice" className="mb-3">
                 <input
                   type="text"
                   className="form-control"
