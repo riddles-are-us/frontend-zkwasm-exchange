@@ -45,7 +45,9 @@ export const MarketPage = () => {
         {marketInfo.length === 0 ? (
           <div>No markets available</div>
         ) : (
-          marketInfo.map((market) => {
+          marketInfo
+          .filter((market) => market.status === 1)
+          .map((market) => {
             const marketId = market.marketId;
             const marketOrders = groupedOrders[marketId] || [];
 
