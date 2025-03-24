@@ -63,11 +63,11 @@ const TransferModal: React.FC<TransferProps> = ({
       validateHexString(cleanedPid, 256);
 
       // Validate token index
-      const cleanedTokenIndex = Number(tokenIndex.trim());
+      const cleanedTokenIndex = parseInt(tokenIndex.trim());
       validateIndex(cleanedTokenIndex);
 
       // Validate token amount
-      const cleanedAmount = Number(amount.trim());
+      const cleanedAmount = parseInt(amount.trim());
       validateIndex(cleanedAmount, 64);
 
       const result = await handler(cleanedPid, BigInt(cleanedTokenIndex), BigInt(cleanedAmount));
@@ -108,7 +108,7 @@ const TransferModal: React.FC<TransferProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter token index as uint32 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter token index as a uint32 decimal number (e.g., 18...)"
                   value={tokenIndex}
                   onChange={(e) => setTokenIndex(e.target.value)}
                   required
@@ -118,7 +118,7 @@ const TransferModal: React.FC<TransferProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter token amount as uint64 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter token amount as a uint64 decimal number (e.g., 18...)"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   required

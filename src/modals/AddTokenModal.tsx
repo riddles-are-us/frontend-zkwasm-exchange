@@ -54,7 +54,7 @@ const AddTokenModal: React.FC<AddTokenProps> = ({
       setIsExecuting(true);
 
       // Validate token index
-      const cleanedTokenIndex = Number(tokenIndex.trim());
+      const cleanedTokenIndex = parseInt(tokenIndex.trim());
       validateIndex(cleanedTokenIndex);
 
       // Validate token address
@@ -91,7 +91,7 @@ const AddTokenModal: React.FC<AddTokenProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter token index as uint32 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter token index as a uint32 decimal number (e.g., 18...)"
                   value={tokenIndex}
                   onChange={(e) => setTokenIndex(e.target.value)}
                   required

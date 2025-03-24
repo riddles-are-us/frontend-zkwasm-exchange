@@ -76,13 +76,13 @@ const AddMarketOrderModal: React.FC<AddTokenProps> = ({
       setIsExecuting(true);
 
       // Validate marketId
-      const cleanedMarketId = Number(marketId.trim());
+      const cleanedMarketId = parseInt(marketId.trim());
       validateIndex(cleanedMarketId, 64);
       // Validate bTokenAmount
-      const cleanedBTokenAmount = Number(bTokenAmount.trim());
+      const cleanedBTokenAmount = parseInt(bTokenAmount.trim());
       validateIndex(cleanedBTokenAmount, 64);
       // Validate bTokenAmount
-      const cleanedATokenAmount = Number(aTokenAmount.trim());
+      const cleanedATokenAmount = parseInt(aTokenAmount.trim());
       validateIndex(cleanedATokenAmount, 64);
 
       const result = await handler(BigInt(cleanedMarketId), BigInt(flag), BigInt(cleanedBTokenAmount), BigInt(cleanedATokenAmount));
@@ -113,7 +113,7 @@ const AddMarketOrderModal: React.FC<AddTokenProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter marketId as uint32 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter marketId as a uint64 decimal number (e.g., 18...)"
                   value={marketId}
                   onChange={(e) => setMarketId(e.target.value)}
                   required
@@ -144,7 +144,7 @@ const AddMarketOrderModal: React.FC<AddTokenProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder={`Enter ${selectedToken} amount as uint32 hexadecimal (e.g., 0x12...)`}
+                  placeholder={`Enter ${selectedToken} amount as a uint64 decimal number (e.g., 18...)`}
                   value={selectedTokenAmount}
                   onChange={(e) => setSelectedTokenAmount(e.target.value)}
                   required

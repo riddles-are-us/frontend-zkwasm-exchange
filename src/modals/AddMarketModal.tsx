@@ -59,14 +59,14 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
       setIsExecuting(true);
 
       // Validate token index A
-      const cleanedTokenIndexA = Number(tokenIndexA.trim());
+      const cleanedTokenIndexA = parseInt(tokenIndexA.trim());
       validateIndex(cleanedTokenIndexA);
       // Validate token index B
-      const cleanedTokenIndexB = Number(tokenIndexB.trim());
+      const cleanedTokenIndexB = parseInt(tokenIndexB.trim());
       validateIndex(cleanedTokenIndexB);
 
       // Validate lastPrice
-      const cleanedLastPrice = Number(lastPrice.trim());
+      const cleanedLastPrice = parseInt(lastPrice.trim());
       validateIndex(cleanedLastPrice);
 
       const result = await handler(BigInt(cleanedTokenIndexA), BigInt(cleanedTokenIndexB), BigInt(cleanedLastPrice));
@@ -97,7 +97,7 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter token index A as uint32 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter token index A as a uint64 decimal number (e.g., 18...)"
                   value={tokenIndexA}
                   onChange={(e) => setTokenIndexA(e.target.value)}
                   required
@@ -107,7 +107,7 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter token index B as uint32 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter token index B as a uint64 decimal number (e.g., 18...)"
                   value={tokenIndexB}
                   onChange={(e) => setTokenIndexB(e.target.value)}
                   required
@@ -117,7 +117,7 @@ const AddMarketModal: React.FC<AddMarketProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter lastPrice as uint64 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter lastPrice as a uint64 decimal number (e.g., 18...)"
                   value={lastPrice}
                   onChange={(e) => setLastPrice(e.target.value)}
                   required

@@ -47,7 +47,7 @@ const CloseMarketModal: React.FC<CloseMarketProps> = ({
       setIsExecuting(true);
 
       // Validate marketId
-      const cleanedMarketId = Number(marketId.trim());
+      const cleanedMarketId = parseInt(marketId.trim());
       validateIndex(cleanedMarketId, 64);
       
       const result = await handler(BigInt(cleanedMarketId));
@@ -78,7 +78,7 @@ const CloseMarketModal: React.FC<CloseMarketProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter marketId as uint64 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter marketId as a uint64 decimal number (e.g., 18...)"
                   value={marketId}
                   onChange={(e) => setMarketId(e.target.value)}
                   required

@@ -47,7 +47,7 @@ const CancelOrderModal: React.FC<CancelOrderProps> = ({
       setIsExecuting(true);
 
       // Validate orderId
-      const cleanedOrderId = Number(orderId.trim());
+      const cleanedOrderId = parseInt(orderId.trim());
       validateIndex(cleanedOrderId, 64);
 
       const result = await handler(BigInt(cleanedOrderId));
@@ -78,7 +78,7 @@ const CancelOrderModal: React.FC<CancelOrderProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter order id as uint64 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter order id as a uint64 decimal number (e.g., 18...)"
                   value={orderId}
                   onChange={(e) => setOrderId(e.target.value)}
                   required

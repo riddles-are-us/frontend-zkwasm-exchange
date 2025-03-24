@@ -63,13 +63,13 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
       setIsExecuting(true);
 
       // Validate marketId
-      const cleanedOrderId = Number(marketId.trim());
+      const cleanedOrderId = parseInt(marketId.trim());
       validateIndex(cleanedOrderId, 64);
       // Validate limitPrice
-      const cleanedLimitPrice = Number(limitPrice.trim());
+      const cleanedLimitPrice = parseInt(limitPrice.trim());
       validateIndex(cleanedLimitPrice, 64);
       // Validate amount
-      const cleanedAmount = Number(amount.trim());
+      const cleanedAmount = parseInt(amount.trim());
       validateIndex(cleanedAmount, 64);
 
       const result = await handler(BigInt(cleanedOrderId), BigInt(flag), BigInt(cleanedLimitPrice), BigInt(cleanedAmount));
@@ -100,7 +100,7 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter marketId as uint32 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter marketId as a uint64 decimal number (e.g., 18...)"
                   value={marketId}
                   onChange={(e) => setMarketId(e.target.value)}
                   required
@@ -120,7 +120,7 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter limitPrice as uint32 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter limitPrice as a uint64 decimal number (e.g., 18...)"
                   value={limitPrice}
                   onChange={(e) => setLimitPrice(e.target.value)}
                   required
@@ -130,7 +130,7 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Enter amount as uint32 hexadecimal (e.g., 0x12...)"
+                  placeholder="Enter amount as a uint64 decimal number (e.g., 18...)"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   required
