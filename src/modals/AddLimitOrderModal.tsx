@@ -63,8 +63,8 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
       setIsExecuting(true);
 
       // Validate marketId
-      const cleanedOrderId = parseInt(marketId.trim());
-      validateIndex(cleanedOrderId, 64);
+      const cleanedMarketId = parseInt(marketId.trim());
+      validateIndex(cleanedMarketId, 64);
       // Validate limitPrice
       const cleanedLimitPrice = parseInt(limitPrice.trim());
       validateIndex(cleanedLimitPrice, 64);
@@ -72,7 +72,7 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
       const cleanedAmount = parseInt(amount.trim());
       validateIndex(cleanedAmount, 64);
 
-      const result = await handler(BigInt(cleanedOrderId), BigInt(flag), BigInt(cleanedLimitPrice), BigInt(cleanedAmount));
+      const result = await handler(BigInt(cleanedMarketId), BigInt(flag), BigInt(cleanedLimitPrice), BigInt(cleanedAmount));
       if(result) {
         setInfoMessage(result);
         setShowResult(true);
