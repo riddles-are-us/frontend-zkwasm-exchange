@@ -39,15 +39,15 @@ export const MarketPage = () => {
     return acc;
   }, {});
 
+  const activeMarkets = marketInfo.filter(market => market.status === 1);
+
   return (
     <MDBContainer className="mt-5">
       <MDBRow>
-        {marketInfo.length === 0 ? (
+        {activeMarkets.length === 0 ? (
           <div>No markets available</div>
         ) : (
-          marketInfo
-          .filter((market) => market.status === 1)
-          .map((market) => {
+          activeMarkets.map((market) => {
             const marketId = market.marketId;
             const marketOrders = groupedOrders[marketId] || [];
 
