@@ -60,26 +60,26 @@ const AddMarketOrderModal: React.FC<AddTokenProps> = ({
       }
 
       if (!selectedTokenAmount) {
-        throw new Error("The aTokenAmount is missing");
+        throw new Error("The token Amount is missing");
       }
 
-      const cleanedBTokenAmount = 0;
-      const cleanedATokenAmount = 0;
+      let cleanedBTokenAmount = 0;
+      let cleanedATokenAmount = 0;
       if(selectedToken === 'A') {
         // Validate bTokenAmount
-        const cleanedBTokenAmount = parseInt('0');
+        cleanedBTokenAmount = parseInt('0');
         validateIndex(cleanedBTokenAmount, 64);
 
         // Validate aTokenAmount
-        const cleanedATokenAmount = parseInt(selectedTokenAmount.trim());
+        cleanedATokenAmount = parseInt(selectedTokenAmount.trim());
         validateIndex(cleanedATokenAmount, 64);
       } else if(selectedToken === 'B') {
         // Validate bTokenAmount
-        const cleanedBTokenAmount = parseInt(selectedTokenAmount.trim());
+        cleanedBTokenAmount = parseInt(selectedTokenAmount.trim());
         validateIndex(cleanedBTokenAmount, 64);
 
         // Validate aTokenAmount
-        const cleanedATokenAmount = parseInt('0');
+        cleanedATokenAmount = parseInt('0');
         validateIndex(cleanedATokenAmount, 64);
       }
 
