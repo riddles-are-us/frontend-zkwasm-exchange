@@ -1,6 +1,3 @@
-import { useEffect, useState } from 'react';
-import { queryStateI } from "../request";
-import { server_admin_key } from "../layout/Main";
 import {
   MDBContainer,
   MDBRow,
