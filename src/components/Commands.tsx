@@ -502,10 +502,13 @@ export default function Commands() {
       if (aTokenAmount !== 0n) {
         cost = aTokenAmount;
       } else {
-        cost = bTokenAmount * BigInt(market.lastPrice) * 2n;
+        cost = bTokenAmount * BigInt(market.lastPrice) / PRECISION;
+        console.log("cost", cost)
         if(cost > MAX_64_BIT) {
           throw new Error("cost overflow");
         }
+        cost = cost * 2n;
+        console.log("cost * 2", cost)
       }
     } else if (flag === BigInt(FLAG_SELL)) {  // If it's a Sell order
       tokenIndex = market.tokenB;
@@ -556,11 +559,11 @@ export default function Commands() {
             return false;
           }
         } else if(aTokenAmount === 0n){
-          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== feeBalanceChange) {
+          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost + feeBalanceChange) {
             console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
             return false;
           }
-          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== feeBalanceChange) {
+          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost + feeBalanceChange) {
             console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
             return false;
           }
