@@ -2,7 +2,7 @@ import { selectUserState } from '../data/state';
 import { useAppSelector } from "../app/hooks";
 import { MDBContainer, MDBRow, MDBCol, MDBCard, MDBCardBody, MDBTypography } from "mdb-react-ui-kit";
 
-export default function Commands() {
+export default function PlayerInfo() {
   const userState = useAppSelector(selectUserState);
 
   return (
