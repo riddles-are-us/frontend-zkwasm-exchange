@@ -17,7 +17,6 @@ import AddMarketModal from "../modals/AddMarketModal";
 import CloseMarketModal from "../modals/CloseMarketModal";
 import TransferModal from "../modals/TransferModal";
 import DepositTokenModal from "../modals/DepositTokenModal";
-import { get_server_admin_key } from "zkwasm-ts-server/src/config.js";
 import { selectMarketInfo } from "../data/market";
 
 const PRECISION = BigInt(1e9);
@@ -26,6 +25,9 @@ const FEE = 3;
 const FEE_TOKEN_INDEX = 0;
 const TYPE_LIMIT = 0;
 const TYPE_MARKET = 1;
+const MARKET_STATUS_CLOSE = 0;
+// Order status
+const STATUS_LIVE = 0;
 const FLAG_BUY = 1;
 const FLAG_SELL = 0;
 const CMD_ADD_TOKEN = 1n;
@@ -206,30 +208,25 @@ export default function Commands() {
     }
   }
 
-  const addTrade = async (orders: Order[], aOrderId: bigint, bOrderId: bigint, aActualAmount: bigint, bActualAmount: bigint) => {
+  const addTrade = async (aOrderId: bigint, bOrderId: bigint, aActualAmount: bigint, bActualAmount: bigint) => {
     if(!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
       return;
     }
-    const aOrder = orders.filter(order => order.id === Number(aOrderId));
-    const bOrder = orders.filter(order => order.id === Number(bOrderId));
-    if(aOrder.length === 0 || bOrder.length === 0) {
-      console.log("Order not found. aOrderId is " + aOrderId + ", bOrderId is " + bOrderId);
-      return;
-    }
-    if(JSON.stringify(aOrder[0].pid) == JSON.stringify(bOrder[0].pid)) {
-      console.log("Same player");
-      return;
-    }
 
+
+    if(aOrderId === 0n || bOrderId === 0n) {
+      console.log("add trade, a order or b order is none");
+      return;
+    }
     let params = [aOrderId, bOrderId, aActualAmount, bActualAmount];
-    const key = get_server_admin_key();
-    const nonce = await getNonce(key);
+    console.log("add trade, aOrderId, bOrderId", aOrderId, bOrderId);
+    const nonce = await getNonce(SEVER_ADMIN_KEY);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_ADD_TRADE, params),
-        prikey: get_server_admin_key(),
+        prikey: SEVER_ADMIN_KEY,
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
@@ -239,6 +236,52 @@ export default function Commands() {
     } else if(sendTransaction.rejected.match(action)) {
       throw Error("Error: " +  action.payload);
     }
+  }
+
+  const checkOrders = (
+    orders: Order[],
+    aOrderId: bigint,
+    bOrderId: bigint,
+    aActualAmount: bigint,
+    bActualAmount: bigint
+  ) => {
+    const aOrder = orders.filter(order => order.id === Number(aOrderId));
+    const bOrder = orders.filter(order => order.id === Number(bOrderId));
+    if(aOrder.length === 0 || bOrder.length === 0) {
+      console.log("add trade, order not found. aOrderId is " + aOrderId + ", bOrderId is " + bOrderId);
+      return false;
+    }
+    const filteredMarkets = marketInfo.filter(market => market.marketId === aOrder[0].market_id);
+    if(filteredMarkets[0].status === MARKET_STATUS_CLOSE) {
+      console.log("add trade, market is closed");
+      return false;
+    }
+    if(JSON.stringify(aOrder[0].pid) === JSON.stringify(bOrder[0].pid)) {
+      console.log("add trade, a order and b order is from same user");
+      return false;
+    }
+    if(!(aOrder[0].status === STATUS_LIVE && bOrder[0].status === STATUS_LIVE)) {
+      console.log("aOrder", aOrder);
+      console.log("add trade, a order or b order is not live. The a order status is" + aOrder[0].status + ", b order status is" + bOrder[0].status);
+      return false;
+    }
+    if (aOrder[0].market_id !== bOrder[0].market_id) {
+      console.log("add trade, orders are not in the same market");
+      return false;
+    }
+    if (!(aOrder[0].flag === FLAG_BUY && bOrder[0].flag === FLAG_SELL)) {
+      console.log("add trade, order types do not match: a order should be buy or b order should be sell");
+      return false;
+    }
+    if (aOrder[0].type_ === TYPE_MARKET && bOrder[0].type_ === TYPE_MARKET) {
+      console.log("add trade, a order and b order is market order");
+      return false;
+    }
+    if (!(BigInt(aOrder[0].lock_balance) >= aActualAmount && bOrder[0].lock_balance >= bActualAmount)) {
+      console.log("balance not match\n");
+      return false;
+    }
+    return true;
   }
 
   const matchOrdersGetTradeParams = async (orders: Order[], incomingOrder: Order) => {
@@ -253,14 +296,15 @@ export default function Commands() {
       // Traverse the sell orders and match
       for (let sellOrder of sellOrders) {
         // Buy order price >= Sell order price
-        if(incomingOrder.type_ == TYPE_LIMIT && sellOrder.type_ == TYPE_LIMIT) {
+        if(incomingOrder.type_ === TYPE_LIMIT && sellOrder.type_ === TYPE_LIMIT) {
           if(incomingOrder.price <= sellOrder.price) {
+            console.log("both a and b is limit order but not buy price >= sell price \n");
             continue;
           }
         }
 
-        if(incomingOrder.type_ == TYPE_LIMIT) {
-          if(sellOrder.type_ == TYPE_LIMIT) {
+        if(incomingOrder.type_ === TYPE_LIMIT) {
+          if(sellOrder.type_ === TYPE_LIMIT) {
             price = sellOrder.price;
           } else {
             price = incomingOrder.price;
@@ -272,19 +316,19 @@ export default function Commands() {
         // Get buy amount and sell amount
         let aActualAmount = 0;
         let bActualAmount = 0;
-        if(incomingOrder.type_ == TYPE_LIMIT) {
+        if(incomingOrder.type_ === TYPE_LIMIT) {
           aActualAmount = incomingOrder.b_token_amount;
         } else {
-          if(incomingOrder.a_token_amount != 0) {
+          if(incomingOrder.a_token_amount !== 0) {
             aActualAmount = incomingOrder.a_token_amount;
           } else {
             aActualAmount = incomingOrder.b_token_amount;
           }
         }
-        if(sellOrder.type_ == TYPE_LIMIT) {
+        if(sellOrder.type_ === TYPE_LIMIT) {
           bActualAmount = sellOrder.b_token_amount;
         } else {
-          if(sellOrder.a_token_amount != 0) {
+          if(sellOrder.a_token_amount !== 0) {
             bActualAmount = sellOrder.a_token_amount;
           } else {
             bActualAmount = sellOrder.b_token_amount;
@@ -302,6 +346,17 @@ export default function Commands() {
         // Ensure aAmount matches buy order's expected amount
         if (aAmount !== BigInt(aActualAmount)) {
           console.log("(price * sell order's expected amount) does not match buy order's expected amount\n");
+          continue;
+        }
+
+        const res = checkOrders(
+          orders,
+          BigInt(incomingOrder.id),
+          BigInt(sellOrder.id),
+          BigInt(aActualAmount),
+          BigInt(bActualAmount)
+        );
+        if(!res) {
           continue;
         }
         result = {
@@ -323,14 +378,15 @@ export default function Commands() {
       // Traverse the buy orders and match
       for (let buyOrder of buyOrders) {
         // Buy order price >= Sell order price
-        if(incomingOrder.type_ == TYPE_LIMIT && buyOrder.type_ == TYPE_LIMIT) {
+        if(incomingOrder.type_ === TYPE_LIMIT && buyOrder.type_ === TYPE_LIMIT) {
           if(buyOrder.price <= incomingOrder.price) {
+            console.log("both a and b is limit order but not buy price >= sell price \n");
             continue;
           }
         }
 
-        if(buyOrder.type_ == TYPE_LIMIT) {
-          if(incomingOrder.type_ == TYPE_LIMIT) {
+        if(buyOrder.type_ === TYPE_LIMIT) {
+          if(incomingOrder.type_ === TYPE_LIMIT) {
             price = incomingOrder.price;
           } else {
             price = buyOrder.price;
@@ -342,19 +398,19 @@ export default function Commands() {
         // Get buy amount and sell amount
         let aActualAmount = 0;
         let bActualAmount = 0;
-        if(buyOrder.type_ == TYPE_LIMIT) {
+        if(buyOrder.type_ === TYPE_LIMIT) {
           aActualAmount = buyOrder.b_token_amount;
         } else {
-          if(buyOrder.a_token_amount != 0) {
+          if(buyOrder.a_token_amount !== 0) {
             aActualAmount = buyOrder.a_token_amount;
           } else {
             aActualAmount = buyOrder.b_token_amount;
           }
         }
-        if(incomingOrder.type_ == TYPE_LIMIT) {
+        if(incomingOrder.type_ === TYPE_LIMIT) {
           bActualAmount = incomingOrder.b_token_amount;
         } else {
-          if(incomingOrder.a_token_amount != 0) {
+          if(incomingOrder.a_token_amount !== 0) {
             bActualAmount = incomingOrder.a_token_amount;
           } else {
             bActualAmount = incomingOrder.b_token_amount;
@@ -374,7 +430,16 @@ export default function Commands() {
           console.log("(price * sell order's expected amount) does not match buy order's expected amount\n");
           continue;
         }
-
+        const res = checkOrders(
+          orders,
+          BigInt(buyOrder.id),
+          BigInt(incomingOrder.id),
+          BigInt(aActualAmount),
+          BigInt(bActualAmount)
+        );
+        if(!res) {
+          continue;
+        }
         result = {
           aOrderId: BigInt(buyOrder.id),
           bOrderId: BigInt(incomingOrder.id),
@@ -423,6 +488,12 @@ export default function Commands() {
 
     // comment because of no market data in state
     const filteredMarkets = marketInfo.filter(market => BigInt(market.marketId) === marketId);
+    if(filteredMarkets.length === 0) {
+      setInfoMessage("Market not exist");
+      setShowResult(true);
+      setShowAddLimitOrderModal(false);
+      return;
+    }
     const market = filteredMarkets[0];
     let tokenIndex = 0;
     let cost = 0n;
@@ -467,7 +538,7 @@ export default function Commands() {
     const action = await orderCheck(f, (before: any, after: any): boolean => {
       let feeBalanceChange = BigInt(FEE);
 
-      if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 != ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
+      if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 !== ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
         console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
         return false;
       }
@@ -475,42 +546,42 @@ export default function Commands() {
       if (flag === BigInt(FLAG_BUY)) {
         let tokenIdx = 0;
 
-        if(bTokenAmount == 0n) {
-          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) != cost + feeBalanceChange) {
+        if(bTokenAmount === 0n) {
+          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost + feeBalanceChange) {
             console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
             return false;
           }
-          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) != cost + feeBalanceChange) {
+          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost + feeBalanceChange) {
             console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
             return false;
           }
-        } else if(aTokenAmount == 0n){
-          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) != feeBalanceChange) {
+        } else if(aTokenAmount === 0n){
+          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== feeBalanceChange) {
             console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
             return false;
           }
-          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) != feeBalanceChange) {
+          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== feeBalanceChange) {
             console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
             return false;
           }
         }
       } else {
         let tokenIdx = 0;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) != feeBalanceChange) {
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== feeBalanceChange) {
           console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
           return false;
         }
-        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) != feeBalanceChange) {
+        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== feeBalanceChange) {
           console.log("fee balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
           return false;
         }
 
         tokenIdx = 1;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) != cost) {
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== cost) {
           console.log("lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
           return false;
         }
-        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) != cost) {
+        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== cost) {
           console.log("balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
           return false;
         }
@@ -524,11 +595,11 @@ export default function Commands() {
       // Return success message along with the result
       const orders = action.payload.state.orders;
       const latestOrder = orders[orders.length - 1];
-      successMessage += "Success: latest order is " + JSON.stringify(latestOrder);
+      successMessage += "Success: latest order is " + JSON.stringify(latestOrder) + "\n";
 
       // Try match orders. If matched, get addTrade parameters
       const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      const addTradeResult = await addTrade(orders, params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
       if(addTradeResult) {
         successMessage += " " + addTradeResult;
       }
@@ -565,6 +636,12 @@ export default function Commands() {
 
     // comment because of no market data in state
     const filteredMarkets = marketInfo.filter(market => BigInt(market.marketId) === marketId);
+    if(filteredMarkets.length === 0) {
+      setInfoMessage("Market not exist");
+      setShowResult(true);
+      setShowAddLimitOrderModal(false);
+      return;
+    }
     const market = filteredMarkets[0];
     let tokenIndex = 0;
     let cost = 0n;
@@ -602,38 +679,38 @@ export default function Commands() {
     let action = await orderCheck(f, (before, after): boolean => {
       let feeBalanceChange = BigInt(FEE);
 
-      if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 != ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
+      if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 !== ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
         console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
         return false;
       }
 
       if (flag === BigInt(FLAG_BUY)) {
         let tokenIdx = 0;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) != cost + feeBalanceChange) {
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost + feeBalanceChange) {
           console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
           return false;
         }
-        if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) != cost + feeBalanceChange) {
+        if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost + feeBalanceChange) {
           console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
           return false;
         }
       } else {
         let tokenIdx = 0;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) != feeBalanceChange) {
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== feeBalanceChange) {
           console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
           return false;
         }
-        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) != feeBalanceChange) {
+        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== feeBalanceChange) {
           console.log("fee balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
           return false;
         }
 
         tokenIdx = 1;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) != cost) {
+        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== cost) {
           console.log("lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
           return false;
         }
-        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) != cost) {
+        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== cost) {
           console.log("balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
           return false;
         }
@@ -646,11 +723,11 @@ export default function Commands() {
       // Return success message along with the result
       const orders = action.payload.state.orders;
       const latestOrder = orders[orders.length - 1];
-      successMessage += "Success: latest order is " + JSON.stringify(latestOrder);
+      successMessage += "Success: latest order is " + JSON.stringify(latestOrder) + "\n";
 
       // Try match orders. If matched, get addTrade parameters
       const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      const addTradeResult = await addTrade(orders, params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
+      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
       if(addTradeResult) {
         successMessage += " " + addTradeResult;
       }
@@ -700,12 +777,11 @@ export default function Commands() {
     }
 
     let params = [tokenAIdx, tokenBIdx, lastPrice];
-    const key = get_server_admin_key();
-    const nonce = await getNonce(key);
+    const nonce = await getNonce(SEVER_ADMIN_KEY);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_ADD_MARKET, params),
-        prikey: get_server_admin_key(),
+        prikey: SEVER_ADMIN_KEY,
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
@@ -725,12 +801,11 @@ export default function Commands() {
     }
 
     let params = [marketId];
-    const key = get_server_admin_key();
-    const nonce = await getNonce(key);
+    const nonce = await getNonce(SEVER_ADMIN_KEY);
     let action = await dispatch(
       sendTransaction({
         cmd: createCommand(BigInt(nonce), CMD_CLOSE_MARKET, params),
-        prikey: get_server_admin_key(),
+        prikey: SEVER_ADMIN_KEY,
       })
     );
     if (sendTransaction.fulfilled.match(action)) {
