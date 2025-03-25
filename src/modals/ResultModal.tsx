@@ -18,7 +18,7 @@ export const ResultModal = ({ infoMessage, show, onClose }: Props) => {
         <Modal.Title>Result</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {infoMessage && <Alert variant="primary">{infoMessage}</Alert>}
+        {infoMessage && <Alert variant="primary" style={{ whiteSpace: 'pre-wrap' }}>{infoMessage}</Alert>}
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={closeModal}>
