@@ -26,6 +26,11 @@ export interface GlobalState {
   markets: Market[];
 }
 
+export interface UserState {
+  player: PlayerInfo | null,
+  state: GlobalState,
+}
+
 export interface Market {
   market_id: number;
   status: number;

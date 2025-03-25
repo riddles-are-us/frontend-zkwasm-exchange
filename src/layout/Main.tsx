@@ -18,9 +18,9 @@ import { MarketPage } from "../components/MarketPage";
 import Footer from "../components/Foot";
 import Nav from "../components/Nav";
 import Commands from "../components/Commands";
-import PlayerInfo from "../components/PlayerInfo";
+import { PlayerInfo } from "../components/PlayerInfo";
 import TokenInfo from "../components/TokenInfo";
-import AdminInfo from "../components/AdminInfo";
+import { AdminInfo } from "../components/AdminInfo";
 import {
   MDBCard,
   MDBCardBody,
@@ -33,6 +33,8 @@ import {
   MDBTabsContent,
   MDBTabsPane
 } from 'mdb-react-ui-kit';
+import { queryStateI } from "../request";
+import { UserState } from "../data/state";
 
 const CMD_REGISTER_PLAYER = 4n;
 // hardcode admin for test
@@ -44,12 +46,20 @@ export function Main() {
   const dispatch = useAppDispatch();
   const [inc, setInc] = useState(0);
   const [activeTab, setActiveTab] = useState("1");
+  const [adminState, setAdminState] = useState<UserState | null>(null);
+  const [playerState, setPlayerState] = useState<UserState | null>(null);
 
-  function updateState() {
+  async function updateState() {
     dispatch(queryMarket());
     dispatch(queryToken());
+
+    // get admin to show admin balance
+    const state = await queryStateI(server_admin_key);
+    console.log("(Data-QueryAdminState)", state);
+    setAdminState(state);
     if (connectState == ConnectState.Idle) {
-      dispatch(queryState(l2account!.getPrivateKey()));
+      const action = await dispatch(queryState(l2account!.getPrivateKey()));
+      setPlayerState(action.payload);
     } else if (connectState == ConnectState.Init) {
       dispatch(queryInitialState("1"));
     }
@@ -57,13 +67,24 @@ export function Main() {
   }
 
   useEffect(() => {
-    dispatch(queryMarket());
-    dispatch(queryToken());
-    if (l2account && connectState == ConnectState.Init) {
-      dispatch(queryState(l2account!.getPrivateKey()));
-    } else {
-      dispatch(queryInitialState("1"));
-    }
+    const fetchData = async () => {
+      await dispatch(queryMarket());
+      await dispatch(queryToken());
+
+      // get admin to show admin balance
+      const state = await queryStateI(server_admin_key);
+      console.log("(Data-QueryAdminState)", state);
+      setAdminState(state);
+
+      if (l2account && connectState === ConnectState.Init) {
+        const action = await dispatch(queryState(l2account.getPrivateKey()));
+        setPlayerState(action.payload);
+      } else {
+        await dispatch(queryInitialState("1"));
+      }
+    };
+
+    fetchData();
   }, [l2account]);
 
   useEffect(() => {
@@ -124,10 +145,10 @@ export function Main() {
 
     <MDBTabsContent style={{ maxHeight: "400px", overflowY: "auto" }}>
       <MDBTabsPane open={activeTab === "1"}>
-        <AdminInfo />
+        <AdminInfo adminState={adminState} />
       </MDBTabsPane>
       <MDBTabsPane open={activeTab === "2"}>
-        <PlayerInfo />
+        <PlayerInfo playerState={playerState} />
       </MDBTabsPane>
       <MDBTabsPane open={activeTab === "3"}>
         <TokenInfo />
