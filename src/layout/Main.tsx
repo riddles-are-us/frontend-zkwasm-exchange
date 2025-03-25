@@ -11,8 +11,7 @@ import {
   queryState,
   sendTransaction,
   queryMarket,
-  queryToken,
-  queryStateI
+  queryToken
 } from "../request";
 import { createCommand } from "zkwasm-minirollup-rpc";
 import { MarketPage } from "../components/MarketPage";
@@ -21,8 +20,8 @@ import Nav from "../components/Nav";
 import Commands from "../components/Commands";
 import PlayerInfo from "../components/PlayerInfo";
 import TokenInfo from "../components/TokenInfo";
+import AdminInfo from "../components/AdminInfo";
 import {
-  MDBContainer,
   MDBCard,
   MDBCardBody,
   MDBRow,
@@ -37,7 +36,7 @@ import {
 
 const CMD_REGISTER_PLAYER = 4n;
 // hardcode admin for test
-const server_admin_key = "1234567";
+export const server_admin_key = "1234567";
 
 export function Main() {
   const connectState = useAppSelector(selectConnectState);
@@ -103,16 +102,21 @@ export function Main() {
     <MDBTabs className="mb-3">
       <MDBTabsItem>
         <MDBTabsLink onClick={() => handleTabClick("1")} active={activeTab === "1"}>
-          Wallet Player Balance
+          Admin Balance
         </MDBTabsLink>
       </MDBTabsItem>
       <MDBTabsItem>
         <MDBTabsLink onClick={() => handleTabClick("2")} active={activeTab === "2"}>
-          Token Info
+          Wallet Player Balance
         </MDBTabsLink>
       </MDBTabsItem>
       <MDBTabsItem>
         <MDBTabsLink onClick={() => handleTabClick("3")} active={activeTab === "3"}>
+          Token Info
+        </MDBTabsLink>
+      </MDBTabsItem>
+      <MDBTabsItem>
+        <MDBTabsLink onClick={() => handleTabClick("4")} active={activeTab === "4"}>
           Market Data
         </MDBTabsLink>
       </MDBTabsItem>
@@ -120,12 +124,15 @@ export function Main() {
 
     <MDBTabsContent style={{ maxHeight: "400px", overflowY: "auto" }}>
       <MDBTabsPane open={activeTab === "1"}>
-        <PlayerInfo />
+        <AdminInfo />
       </MDBTabsPane>
       <MDBTabsPane open={activeTab === "2"}>
-        <TokenInfo />
+        <PlayerInfo />
       </MDBTabsPane>
       <MDBTabsPane open={activeTab === "3"}>
+        <TokenInfo />
+      </MDBTabsPane>
+      <MDBTabsPane open={activeTab === "4"}>
         <MarketPage />
       </MDBTabsPane>
     </MDBTabsContent>
