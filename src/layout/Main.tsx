@@ -6,14 +6,34 @@ import "./style.scss";
 import { selectConnectState } from "../data/state";
 import { useAppSelector, useAppDispatch } from "../app/hooks";
 import { AccountSlice, ConnectState } from "zkwasm-minirollup-browser";
-import { queryInitialState, queryState, sendTransaction, queryMarket } from "../request";
+import {
+  queryInitialState,
+  queryState,
+  sendTransaction,
+  queryMarket,
+  queryToken,
+  queryStateI
+} from "../request";
 import { createCommand } from "zkwasm-minirollup-rpc";
 import { MarketPage } from "../components/MarketPage";
 import Footer from "../components/Foot";
 import Nav from "../components/Nav";
 import Commands from "../components/Commands";
 import PlayerInfo from "../components/PlayerInfo";
-import { MDBRow, MDBCol, MDBTypography } from 'mdb-react-ui-kit';
+import TokenInfo from "../components/TokenInfo";
+import {
+  MDBContainer,
+  MDBCard,
+  MDBCardBody,
+  MDBRow,
+  MDBCol,
+  MDBTypography,
+  MDBTabs,
+  MDBTabsItem,
+  MDBTabsLink,
+  MDBTabsContent,
+  MDBTabsPane
+} from 'mdb-react-ui-kit';
 
 const CMD_REGISTER_PLAYER = 4n;
 // hardcode admin for test
@@ -24,9 +44,11 @@ export function Main() {
   const l2account = useAppSelector(AccountSlice.selectL2Account);
   const dispatch = useAppDispatch();
   const [inc, setInc] = useState(0);
+  const [activeTab, setActiveTab] = useState("1");
 
   function updateState() {
     dispatch(queryMarket());
+    dispatch(queryToken());
     if (connectState == ConnectState.Idle) {
       dispatch(queryState(l2account!.getPrivateKey()));
     } else if (connectState == ConnectState.Init) {
@@ -37,6 +59,7 @@ export function Main() {
 
   useEffect(() => {
     dispatch(queryMarket());
+    dispatch(queryToken());
     if (l2account && connectState == ConnectState.Init) {
       dispatch(queryState(l2account!.getPrivateKey()));
     } else {
@@ -67,41 +90,56 @@ export function Main() {
     }
   }, [connectState]);
 
+  const handleTabClick = (value: string) => {
+    if (value === activeTab) return;
+    setActiveTab(value);
+  };
+
   return (
     <>
     {/* Navigation Bar */}
     <Nav />
 
-    {/* PlayerInfo Section */}
-    <MDBRow className="mt-4">
-      <MDBCol>
-        {/* Title for the Command Buttons Section */}
-        <MDBTypography tag="h3" className="text-center mb-4">
+    <MDBTabs className="mb-3">
+      <MDBTabsItem>
+        <MDBTabsLink onClick={() => handleTabClick("1")} active={activeTab === "1"}>
           Wallet Player Balance
-        </MDBTypography>
-        <PlayerInfo />
-      </MDBCol>
-    </MDBRow>
-
-    {/* Command Buttons Section */}
-    <MDBRow className="mt-4">
-      <MDBCol>
-        {/* Title for the Command Buttons Section */}
-        <MDBTypography tag="h3" className="text-center mb-4">
-          Execute Commands
-        </MDBTypography>
-        <Commands />
-      </MDBCol>
-    </MDBRow>
-
-    {/* Market Page */}
-    <MDBRow className="mt-4">
-      <MDBCol>
-        {/* Title for the MarketPage Section */}
-        <MDBTypography tag="h3" className="text-center mb-4">
+        </MDBTabsLink>
+      </MDBTabsItem>
+      <MDBTabsItem>
+        <MDBTabsLink onClick={() => handleTabClick("2")} active={activeTab === "2"}>
+          Token Info
+        </MDBTabsLink>
+      </MDBTabsItem>
+      <MDBTabsItem>
+        <MDBTabsLink onClick={() => handleTabClick("3")} active={activeTab === "3"}>
           Market Data
-        </MDBTypography>
+        </MDBTabsLink>
+      </MDBTabsItem>
+    </MDBTabs>
+
+    <MDBTabsContent style={{ maxHeight: "400px", overflowY: "auto" }}>
+      <MDBTabsPane open={activeTab === "1"}>
+        <PlayerInfo />
+      </MDBTabsPane>
+      <MDBTabsPane open={activeTab === "2"}>
+        <TokenInfo />
+      </MDBTabsPane>
+      <MDBTabsPane open={activeTab === "3"}>
         <MarketPage />
+      </MDBTabsPane>
+    </MDBTabsContent>
+
+    <MDBRow className="mt-4">
+      <MDBCol>
+        <MDBCard>
+          <MDBCardBody>
+            <MDBTypography tag="h4" className="mb-3 text-center">
+              Execute Commands
+            </MDBTypography>
+            <Commands />
+          </MDBCardBody>
+        </MDBCard>
       </MDBCol>
     </MDBRow>
 

@@ -2,6 +2,7 @@ import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
 import { AccountSliceReducer } from 'zkwasm-minirollup-browser';
 import stateReducer from "../data/state";
 import marketReducer from '../data/market';
+import tokenReducer from '../data/token';
 
 export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
@@ -20,7 +21,8 @@ export const store = configureStore({
   reducer: {
     account: AccountSliceReducer,
     exchange: stateReducer,
-    market: marketReducer
+    market: marketReducer,
+    token: tokenReducer
   },
 });
 
