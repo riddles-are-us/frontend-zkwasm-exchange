@@ -28,8 +28,6 @@ const AddMarketOrderModal: React.FC<AddTokenProps> = ({
 }) => {
   const [marketId, setMarketId] = useState('');
   const [flag, setFlag] = useState('');
-  const [bTokenAmount, setBTokenAmount] = useState('');
-  const [aTokenAmount, setATokenAmount] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -57,7 +55,7 @@ const AddMarketOrderModal: React.FC<AddTokenProps> = ({
         throw new Error("Please select buy/sell");
       }
 
-      if(selectedToken == "") {
+      if(selectedToken === "") {
         throw new Error("Please select token");
       }
 
@@ -65,12 +63,24 @@ const AddMarketOrderModal: React.FC<AddTokenProps> = ({
         throw new Error("The aTokenAmount is missing");
       }
 
-      if(selectedToken == 'A') {
-        setATokenAmount(selectedTokenAmount);
-        setBTokenAmount('0');
-      } else if(selectedToken == 'B') {
-        setBTokenAmount(selectedTokenAmount);
-        setATokenAmount('0');
+      const cleanedBTokenAmount = 0;
+      const cleanedATokenAmount = 0;
+      if(selectedToken === 'A') {
+        // Validate bTokenAmount
+        const cleanedBTokenAmount = parseInt('0');
+        validateIndex(cleanedBTokenAmount, 64);
+
+        // Validate aTokenAmount
+        const cleanedATokenAmount = parseInt(selectedTokenAmount.trim());
+        validateIndex(cleanedATokenAmount, 64);
+      } else if(selectedToken === 'B') {
+        // Validate bTokenAmount
+        const cleanedBTokenAmount = parseInt(selectedTokenAmount.trim());
+        validateIndex(cleanedBTokenAmount, 64);
+
+        // Validate aTokenAmount
+        const cleanedATokenAmount = parseInt('0');
+        validateIndex(cleanedATokenAmount, 64);
       }
 
       setIsExecuting(true);
@@ -78,12 +88,6 @@ const AddMarketOrderModal: React.FC<AddTokenProps> = ({
       // Validate marketId
       const cleanedMarketId = parseInt(marketId.trim());
       validateIndex(cleanedMarketId, 64);
-      // Validate bTokenAmount
-      const cleanedBTokenAmount = parseInt(bTokenAmount.trim());
-      validateIndex(cleanedBTokenAmount, 64);
-      // Validate bTokenAmount
-      const cleanedATokenAmount = parseInt(aTokenAmount.trim());
-      validateIndex(cleanedATokenAmount, 64);
 
       const result = await handler(BigInt(cleanedMarketId), BigInt(flag), BigInt(cleanedBTokenAmount), BigInt(cleanedATokenAmount));
       if(result) {
