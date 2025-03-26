@@ -18,17 +18,19 @@ import CloseMarketModal from "../modals/CloseMarketModal";
 import TransferModal from "../modals/TransferModal";
 import DepositTokenModal from "../modals/DepositTokenModal";
 import { selectMarketInfo } from "../data/market";
+import { checkHelper } from "../utils/transaction";
+import { Market } from "../data/market";
 
 const PRECISION = BigInt(1e9);
 const MAX_64_BIT = BigInt('9223372036854775807');
-const FEE = 3;
+export const FEE = 3;
 const FEE_TOKEN_INDEX = 0;
 const TYPE_LIMIT = 0;
 const TYPE_MARKET = 1;
 const MARKET_STATUS_CLOSE = 0;
 // Order status
 const STATUS_LIVE = 0;
-const FLAG_BUY = 1;
+export const FLAG_BUY = 1;
 const FLAG_SELL = 0;
 const CMD_ADD_TOKEN = 1n;
 const CMD_UPDATE_TOKEN = 12n;
@@ -452,14 +454,19 @@ export default function Commands() {
     }
   }
 
-  async function orderCheck(f: ()=> any, check:(before: any, after: any) => boolean) {
+  async function orderCheck(
+    f: ()=> any,
+    market: Market,
+    flag: bigint,
+    cost: bigint,
+    check:(before: any, after: any, market: Market, flag: bigint, cost: bigint) => boolean) {
     // Query state before placing the market order
     let before = await dispatch(queryState(l2account!.getPrivateKey()));
     const action = await f();
 
     // Query state after placing the market order
     let after = await dispatch(queryState(l2account!.getPrivateKey()));
-    if(!check(before.payload, after.payload)) {
+    if(!check(before.payload, after.payload, market, flag, cost)) {
         throw new Error("orderCheck failed");
     }
 
@@ -538,60 +545,7 @@ export default function Commands() {
       throw new Error("fee lock_balance overflow");
     }
 
-    const action = await orderCheck(f, (before: any, after: any): boolean => {
-      let feeBalanceChange = BigInt(FEE);
-
-      if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 !== ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
-        console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
-        return false;
-      }
-
-      if (flag === BigInt(FLAG_BUY)) {
-        let tokenIdx = 0;
-
-        if(bTokenAmount === 0n) {
-          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost + feeBalanceChange) {
-            console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-            return false;
-          }
-          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost + feeBalanceChange) {
-            console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
-            return false;
-          }
-        } else if(aTokenAmount === 0n){
-          if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost + feeBalanceChange) {
-            console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-            return false;
-          }
-          if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost + feeBalanceChange) {
-            console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
-            return false;
-          }
-        }
-      } else {
-        let tokenIdx = 0;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== feeBalanceChange) {
-          console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-          return false;
-        }
-        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== feeBalanceChange) {
-          console.log("fee balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
-          return false;
-        }
-
-        tokenIdx = 1;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== cost) {
-          console.log("lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-          return false;
-        }
-        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== cost) {
-          console.log("balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
-          return false;
-        }
-      }
-
-      return true;
-    });
+    const action = await orderCheck(f, market, flag, cost, checkHelper);
 
     let successMessage = "";
     if (sendTransaction.fulfilled.match(action)) {
@@ -679,47 +633,7 @@ export default function Commands() {
     }
 
     // Validate if the state has changed correctly
-    let action = await orderCheck(f, (before, after): boolean => {
-      let feeBalanceChange = BigInt(FEE);
-
-      if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 !== ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
-        console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
-        return false;
-      }
-
-      if (flag === BigInt(FLAG_BUY)) {
-        let tokenIdx = 0;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost + feeBalanceChange) {
-          console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-          return false;
-        }
-        if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost + feeBalanceChange) {
-          console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
-          return false;
-        }
-      } else {
-        let tokenIdx = 0;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== feeBalanceChange) {
-          console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-          return false;
-        }
-        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== feeBalanceChange) {
-          console.log("fee balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
-          return false;
-        }
-
-        tokenIdx = 1;
-        if (BigInt(after.player.data.positions[tokenIdx].lock_balance) - BigInt(before.player.data.positions[tokenIdx].lock_balance) !== cost) {
-          console.log("lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-          return false;
-        }
-        if (BigInt(before.player.data.positions[tokenIdx].balance) - BigInt(after.player.data.positions[tokenIdx].balance) !== cost) {
-          console.log("balance", before.player.data.positions[tokenIdx].balance, after.player.data.positions[tokenIdx].balance);
-          return false;
-        }
-      }
-      return true;
-    });
+    const action = await orderCheck(f, market, flag, cost, checkHelper);
 
     let successMessage = "";
     if (sendTransaction.fulfilled.match(action)) {

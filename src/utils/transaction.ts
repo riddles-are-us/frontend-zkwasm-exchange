@@ -1,5 +1,8 @@
 import BN from "bn.js";
 import { queryStateI } from "../request";
+import { FLAG_BUY } from "../components/Commands";
+import { Market } from "../data/market";
+import { FEE } from "../components/Commands";
 
 export function removeHexPrefix(value: string): string {
   return value.startsWith("0x") ? value.slice(2) : value;
@@ -85,4 +88,48 @@ export async function getNonce(processingKey: string): Promise<bigint> {
     nonce = BigInt(state.player.nonce);
   }
   return nonce;
+}
+
+export const checkHelper = (before: any, after: any, market: Market, flag: bigint, cost: bigint): boolean => {
+  if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 !== ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
+    console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
+    return false;
+  }
+
+  let tokenIdx = 0;
+  if (flag === BigInt(FLAG_BUY)) {
+    tokenIdx = market.tokenA;
+  } else {
+    tokenIdx = market.tokenB;
+  }
+  if(tokenIdx === 0) {
+    if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost + BigInt(FEE)) {
+      console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+      return false;
+    }
+    if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost + BigInt(FEE)) {
+      console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
+      return false;
+    }
+  } else {
+    if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost) {
+      console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
+      return false;
+    }
+    if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost) {
+      console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
+      return false;
+    }
+
+    let feeTokenIndex = 0;
+    if (BigInt(after.player.data.positions[feeTokenIndex].lock_balance) - BigInt(before.player.data.positions[feeTokenIndex].lock_balance) !== BigInt(FEE)) {
+      console.log("lock_balance", after.player.data.positions[feeTokenIndex].lock_balance, before.player.data.positions[feeTokenIndex].lock_balance);
+      return false;
+    }
+    if (BigInt(before.player.data.positions[feeTokenIndex].balance) - BigInt(after.player.data.positions[feeTokenIndex].balance) !== BigInt(FEE)) {
+      console.log("balance", before.player.data.positions[feeTokenIndex].balance, after.player.data.positions[feeTokenIndex].balance);
+      return false;
+    }
+  }
+  return true;
 }
