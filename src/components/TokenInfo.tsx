@@ -11,13 +11,12 @@ import {
   MDBPaginationLink
  } from "mdb-react-ui-kit";
 
-export default function PlayerInfo() {
+export default function TokenInfo() {
   const tokenInfo = useAppSelector(selectTokenInfo);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 5;
   const totalPages = Math.ceil(tokenInfo.length / rowsPerPage);
 
-  // 计算当前页显示的数据
   const displayedTokens = tokenInfo.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   const handlePageChange = (page: number) => {
