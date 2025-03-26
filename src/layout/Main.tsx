@@ -21,6 +21,7 @@ import Commands from "../components/Commands";
 import { PlayerInfo } from "../components/PlayerInfo";
 import TokenInfo from "../components/TokenInfo";
 import { AdminInfo } from "../components/AdminInfo";
+import { TradeInfo } from "../components/TradeInfo";
 import {
   MDBCard,
   MDBCardBody,
@@ -141,6 +142,11 @@ export function Main() {
           Market Data
         </MDBTabsLink>
       </MDBTabsItem>
+      <MDBTabsItem>
+        <MDBTabsLink onClick={() => handleTabClick("5")} active={activeTab === "5"}>
+          Trade Info
+        </MDBTabsLink>
+      </MDBTabsItem>
     </MDBTabs>
 
     <MDBTabsContent style={{ maxHeight: "400px", overflowY: "auto" }}>
@@ -155,6 +161,9 @@ export function Main() {
       </MDBTabsPane>
       <MDBTabsPane open={activeTab === "4"}>
         <MarketPage />
+      </MDBTabsPane>
+      <MDBTabsPane open={activeTab === "5"}>
+        <TradeInfo playerState={playerState} />
       </MDBTabsPane>
     </MDBTabsContent>
 
