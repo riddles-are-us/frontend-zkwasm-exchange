@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { useAppSelector } from "../app/hooks";
-import { selectUserState } from '../data/state';
 import {
   MDBContainer,
   MDBTable,
