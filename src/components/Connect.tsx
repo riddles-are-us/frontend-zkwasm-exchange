@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from 'react';
 import "./style.scss";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import {AccountSlice} from "zkwasm-minirollup-browser";
@@ -6,21 +6,44 @@ import {
     MDBBtn,
 } from 'mdb-react-ui-kit';
 import { addressAbbreviation } from "../utils/address";
+import { extractErrorMessage } from "../utils/transaction";
+import { ResultModal } from "../modals/ResultModal";
 interface IProps {
   handleRestart: () => void;
 }
 
 export function ConnectButton(props: IProps) {
+  const [infoMessage, setInfoMessage] = useState("");
+  const [showResult, setShowResult] = useState(false);
   const dispatch = useAppDispatch();
   const l1account = useAppSelector(AccountSlice.selectL1Account);
-  function connect() {
-    dispatch(AccountSlice.loginL1AccountAsync());
+  async function connect() {
+    try {
+      let action = await dispatch(AccountSlice.loginL1AccountAsync());
+      if (AccountSlice.loginL1AccountAsync.fulfilled.match(action)) {
+        console.log("Login successful:", action.payload);
+      } else if (AccountSlice.loginL1AccountAsync.rejected.match(action)) {
+        const errorMessage = action.error.message || 'Unknown error';
+        const userMessage = extractErrorMessage(errorMessage);
+        throw new Error("Error: " + userMessage);
+      }
+    } catch (err: any) {
+      setInfoMessage(err.message || "Unknown error");
+      setShowResult(true);
+    }
   }
   if (l1account) {
     return <span className="l1address">l1address: {addressAbbreviation(l1account!.address, 5)}</span>
   } else {
     return (
+      <>
         <MDBBtn onClick={connect}>connect </MDBBtn>
+        <ResultModal
+          infoMessage={infoMessage}
+          show={showResult}
+          onClose={() => setShowResult(false)}
+        />
+      </>
     );
   }
 }

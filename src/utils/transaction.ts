@@ -133,3 +133,16 @@ export const checkHelper = (before: any, after: any, market: Market, flag: bigin
   }
   return true;
 }
+
+// extract and simplify error messages for loginL1AccountAsync
+export function extractErrorMessage(errorMessage: string): string {
+  const regex = /Try adding the chain using wallet_addEthereumChain first./;
+  const match = errorMessage.match(regex);
+  if (match) {
+    const chainIdMatch = errorMessage.match(/"chainId":\s?"(0x[0-9a-fA-F]+)"/);
+    if (chainIdMatch) {
+      return `Please manually add the correct network (Chain ID: ${chainIdMatch[1]}) to MetaMask before proceeding.`;
+    }
+  }
+  return errorMessage;
+}
