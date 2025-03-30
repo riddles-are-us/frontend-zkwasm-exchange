@@ -64,6 +64,7 @@ export interface Trade {
 
 const initialState: PropertiesState<PlayerInfo, GlobalState, any> = {
     connectState: ConnectState.Init,
+    isConnected: true,
     userState: null,
     lastError: null,
     config: null,
