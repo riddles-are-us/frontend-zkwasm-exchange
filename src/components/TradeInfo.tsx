@@ -9,6 +9,8 @@ import {
   MDBPaginationLink,
 } from 'mdb-react-ui-kit';
 import { UserState } from "../data/state";
+import { useAppSelector } from '../app/hooks';
+import { selectUserState } from '../data/state';
 
 interface TradeInfoProps {
   playerState: UserState | null;
@@ -24,7 +26,20 @@ interface Trade {
 
 export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const userState = useAppSelector(selectUserState);
   const rowsPerPage = 5;
+
+  // get orders data
+  const orders = userState?.state?.orders || [];
+
+  // group orders by id
+  const groupOrders: { [key: number]: any[] } = orders.reduce((acc: { [key: number]: any[] }, order) => {
+    if (!acc[order.id]) {
+      acc[order.id] = [];
+    }
+    acc[order.id].push(order.market_id);
+    return acc;
+  }, {});
 
   let trades: Trade[] = [];
 
@@ -50,10 +65,11 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState }) => {
           <tr>
             <th scope="col">#</th>
             <th scope="col">Trade ID</th>
-            <th scope="col">A Order ID</th>
-            <th scope="col">B Order ID</th>
-            <th scope="col">A Actual Amount</th>
-            <th scope="col">B Actual Amount</th>
+            <th scope="col">Market ID</th>
+            <th scope="col">Buy Order ID</th>
+            <th scope="col">Sell Order ID</th>
+            <th scope="col">Buy Actual Amount</th>
+            <th scope="col">Sell Actual Amount</th>
           </tr>
         </MDBTableHead>
         <MDBTableBody>
@@ -61,6 +77,7 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState }) => {
             <tr key={index}>
               <td>{(currentPage - 1) * rowsPerPage + index + 1}</td>
               <td>{trade.trade_id}</td>
+              <td>{groupOrders[trade.a_order_id]}</td>
               <td>{trade.a_order_id}</td>
               <td>{trade.b_order_id}</td>
               <td>{trade.a_actual_amount}</td>
