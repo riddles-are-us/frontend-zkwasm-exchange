@@ -5,7 +5,6 @@ import {
   MDBModalBody,
   MDBModalFooter,
   MDBBtn,
-  MDBInputGroup,
   MDBSpinner,
   MDBModalContent,
   MDBModalDialog
@@ -13,6 +12,9 @@ import {
 import ErrorAlert from '../components/ErrorAlert';
 import { validateIndex, formatErrorMessage } from "../utils/transaction";
 import { ResultModal } from "./ResultModal";
+import { useAppSelector } from '../app/hooks';
+import { selectMarketInfo } from "../data/market";
+import { Form } from 'react-bootstrap';
 
 export interface CloseMarketProps {
   show: boolean;
@@ -30,6 +32,9 @@ const CloseMarketModal: React.FC<CloseMarketProps> = ({
   const [infoMessage, setInfoMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [showResult, setShowResult] = useState(false);
+  const marketInfo = useAppSelector(selectMarketInfo);
+
+  const activeMarkets = marketInfo.filter(market => market.status === 1);
 
   const closeModal = () => {
     setMarketId('');
@@ -41,7 +46,7 @@ const CloseMarketModal: React.FC<CloseMarketProps> = ({
     try {
       setErrorMessage("");
       if (!marketId) {
-        throw new Error("The marketId is missing");
+        throw new Error("Please select marketId");
       }
 
       setIsExecuting(true);
@@ -74,16 +79,19 @@ const CloseMarketModal: React.FC<CloseMarketProps> = ({
             </MDBModalHeader>
             <MDBModalBody>
               {errorMessage && <ErrorAlert message={errorMessage} onClose={() => setErrorMessage("")} />}
-              <MDBInputGroup textBefore="MarketId" className="mb-3">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Enter marketId as a uint64 decimal number (e.g., 18...)"
-                  value={marketId}
-                  onChange={(e) => setMarketId(e.target.value)}
-                  required
-                />
-              </MDBInputGroup>
+              <Form.Label htmlFor="inputMarketId">MarketId</Form.Label>
+              <Form.Select
+                id="inputMarketId"
+                value={marketId}
+                onChange={(e) => setMarketId(e.target.value)}
+              >
+                <option value="" disabled>Select MarketId</option>
+                {activeMarkets.map((market, index) => (
+                  <option key={index} value={market.marketId}>
+                    {market.marketId}
+                  </option>
+                ))}
+              </Form.Select>
             </MDBModalBody>
             <MDBModalFooter>
               <MDBBtn color="secondary" onClick={closeModal}>

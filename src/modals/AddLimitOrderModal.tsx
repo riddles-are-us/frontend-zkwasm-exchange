@@ -14,6 +14,8 @@ import ErrorAlert from '../components/ErrorAlert';
 import { validateIndex, formatErrorMessage } from "../utils/transaction";
 import { ResultModal } from "./ResultModal";
 import { Form } from 'react-bootstrap';
+import { useAppSelector } from '../app/hooks';
+import { selectMarketInfo } from "../data/market";
 
 export interface AddLimitOrderProps {
   show: boolean;
@@ -34,6 +36,9 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
   const [infoMessage, setInfoMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [showResult, setShowResult] = useState(false);
+  const marketInfo = useAppSelector(selectMarketInfo);
+
+  const activeMarkets = marketInfo.filter(market => market.status === 1);
 
   const closeModal = () => {
     setMarketId('');
@@ -48,7 +53,7 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
     try {
       setErrorMessage("");
       if (!marketId) {
-        throw new Error("The marketId is missing");
+        throw new Error("Please select marketId");
       }
       if (!flag) {
         throw new Error("Please select buy/sell");
@@ -96,17 +101,20 @@ const AddLimitOrderModal: React.FC<AddLimitOrderProps> = ({
             </MDBModalHeader>
             <MDBModalBody>
               {errorMessage && <ErrorAlert message={errorMessage} onClose={() => setErrorMessage("")} />}
-              <MDBInputGroup textBefore="MarketId" className="mb-3">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Enter marketId as a uint64 decimal number (e.g., 18...)"
-                  value={marketId}
-                  onChange={(e) => setMarketId(e.target.value)}
-                  required
-                />
-              </MDBInputGroup>
-              <MDBInputGroup className="mb-3">
+              <Form.Label htmlFor="inputMarketId">MarketId</Form.Label>
+              <Form.Select
+                id="inputMarketId"
+                value={marketId}
+                onChange={(e) => setMarketId(e.target.value)}
+              >
+                <option value="" disabled>Select MarketId</option>
+                {activeMarkets.map((market, index) => (
+                  <option key={index} value={market.marketId}>
+                    {market.marketId}
+                  </option>
+                ))}
+              </Form.Select>
+              <MDBInputGroup className="mb-3 mt-3">
                 <Form.Select
                   value={flag}
                   onChange={(e) => setFlag(e.target.value)}
