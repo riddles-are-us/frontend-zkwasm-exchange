@@ -2,7 +2,7 @@ import BN from "bn.js";
 import { queryStateI } from "../request";
 import { FLAG_BUY } from "../components/Commands";
 import { Market } from "../data/market";
-import { FEE } from "../components/Commands";
+import { FEE, FEE_TOKEN_INDEX } from "../components/Commands";
 
 export function removeHexPrefix(value: string): string {
   return value.startsWith("0x") ? value.slice(2) : value;
@@ -90,10 +90,9 @@ export async function getNonce(processingKey: string): Promise<bigint> {
   return nonce;
 }
 
-export const checkHelper = (before: any, after: any, market: Market, flag: bigint, cost: bigint): boolean => {
+export const checkHelper = (before: any, after: any, market: Market, flag: bigint, cost: bigint) => {
   if(("order_id_counter" in before.state?before.state["order_id_counter"]:0) + 1 !== ("order_id_counter" in after.state?after.state["order_id_counter"]:0)) {
-    console.log("order_id_counter", before.state?.order_id_counter, after.state?.order_id_counter);
-    return false;
+    throw new Error("Client check error: order_id_counter before adding order is " + before.state?.order_id_counter + ", order_id_counter after adding order is " + after.state?.order_id_counter);
   }
 
   let tokenIdx = 0;
@@ -104,34 +103,27 @@ export const checkHelper = (before: any, after: any, market: Market, flag: bigin
   }
   if(tokenIdx === 0) {
     if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost + BigInt(FEE)) {
-      console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-      return false;
+      throw new Error("Client check error: feetokenIndex is " + FEE_TOKEN_INDEX +", feeTokenIndex' lock_balance before adding order is " + after.player.data.positions[tokenIdx].lock_balance + ", feeTokenIndex' lock_balance after adding order is " + before.player.data.positions[tokenIdx].lock_balance);
     }
     if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost + BigInt(FEE)) {
-      console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
-      return false;
+      throw new Error("Client check error: feetokenIndex is " + FEE_TOKEN_INDEX +", feeTokenIndex' balance before adding order is " + after.player.data.positions[tokenIdx].balance + ", feeTokenIndex' balance after adding order is " + before.player.data.positions[tokenIdx].balance);
     }
   } else {
     if (BigInt(after.player.data.positions[tokenIdx].lock_balance - before.player.data.positions[tokenIdx].lock_balance) !== cost) {
-      console.log("fee lock_balance", after.player.data.positions[tokenIdx].lock_balance, before.player.data.positions[tokenIdx].lock_balance);
-      return false;
+      throw new Error("Client check error: tokenIndex is " + tokenIdx +", tokenIndex' lock_balance before adding order is " + after.player.data.positions[tokenIdx].lock_balance + ", tokenIndex' lock_balance after adding order is " + before.player.data.positions[tokenIdx].lock_balance);
     }
     if (BigInt(before.player.data.positions[tokenIdx].balance - after.player.data.positions[tokenIdx].balance) !== cost) {
-      console.log("fee balance", after.player.data.positions[tokenIdx].balance, before.player.data.positions[tokenIdx].balance);
-      return false;
+      throw new Error("Client check error: tokenIndex is " + tokenIdx +", tokenIndex' balance before adding order is " + after.player.data.positions[tokenIdx].balance + ", tokenIndex' balance after adding order is " + before.player.data.positions[tokenIdx].balance);
     }
 
     let feeTokenIndex = 0;
     if (BigInt(after.player.data.positions[feeTokenIndex].lock_balance) - BigInt(before.player.data.positions[feeTokenIndex].lock_balance) !== BigInt(FEE)) {
-      console.log("lock_balance", after.player.data.positions[feeTokenIndex].lock_balance, before.player.data.positions[feeTokenIndex].lock_balance);
-      return false;
+      throw new Error("Client check error: feetokenIndex is " + FEE_TOKEN_INDEX +", feeTokenIndex' lock_balance before adding order is " + after.player.data.positions[feeTokenIndex].lock_balance + ", feeTokenIndex' lock_balance after adding order is " + before.player.data.positions[feeTokenIndex].lock_balance);
     }
     if (BigInt(before.player.data.positions[feeTokenIndex].balance) - BigInt(after.player.data.positions[feeTokenIndex].balance) !== BigInt(FEE)) {
-      console.log("balance", before.player.data.positions[feeTokenIndex].balance, after.player.data.positions[feeTokenIndex].balance);
-      return false;
+      throw new Error("Client check error: feetokenIndex is " + FEE_TOKEN_INDEX +", feeTokenIndex' balance before adding order is " + before.player.data.positions[feeTokenIndex].balance  + ", feeTokenIndex' balance after adding order is " + after.player.data.positions[feeTokenIndex].balance);
     }
   }
-  return true;
 }
 
 // extract and simplify error messages for loginL1AccountAsync

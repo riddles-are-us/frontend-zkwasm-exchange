@@ -24,7 +24,7 @@ import { Market } from "../data/market";
 const PRECISION = BigInt(1e9);
 const MAX_64_BIT = BigInt('9223372036854775807');
 export const FEE = 3;
-const FEE_TOKEN_INDEX = 0;
+export const FEE_TOKEN_INDEX = 0;
 const TYPE_LIMIT = 0;
 const TYPE_MARKET = 1;
 const MARKET_STATUS_CLOSE = 0;
@@ -459,16 +459,15 @@ export default function Commands() {
     market: Market,
     flag: bigint,
     cost: bigint,
-    check:(before: any, after: any, market: Market, flag: bigint, cost: bigint) => boolean) {
+    check:(before: any, after: any, market: Market, flag: bigint, cost: bigint) => void) {
     // Query state before placing the market order
     let before = await dispatch(queryState(l2account!.getPrivateKey()));
     const action = await f();
 
     // Query state after placing the market order
     let after = await dispatch(queryState(l2account!.getPrivateKey()));
-    if(!check(before.payload, after.payload, market, flag, cost)) {
-        throw new Error("orderCheck failed");
-    }
+
+    check(before.payload, after.payload, market, flag, cost);
 
     return action;
   }
