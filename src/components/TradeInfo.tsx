@@ -7,11 +7,16 @@ import {
   MDBPagination,
   MDBPaginationItem,
   MDBPaginationLink,
+  MDBPopover,
+  MDBPopoverBody
 } from 'mdb-react-ui-kit';
 import { UserState } from "../data/state";
 import { useAppSelector } from '../app/hooks';
 import { selectUserState } from '../data/state';
 import { selectMarketInfo } from "../data/market";
+import { Order } from "../data/state";
+import { typeMap, statusMap } from "./MarketPage";
+import { FLAG_BUY } from './Commands';
 
 interface TradeInfoProps {
   playerState: UserState | null;
@@ -51,17 +56,13 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState }) => {
     const aOrder = orders[trade.a_order_id];
 
     const market = marketInfo.filter(market => market.marketId === aOrder.market_id);
-    const buyTokenIn = market[0].tokenA;
-    const buyTokenOut = market[0].tokenB;
-    const sellTokenIn = market[0].tokenB;
-    const sellTokenOut = market[0].tokenA;
+    const buyTokenIndexIn = market[0].tokenA;
+    const buyTokenIndexOut = market[0].tokenB;
 
     return {
       ...trade,
-      buyTokenIn,
-      buyTokenOut,
-      sellTokenIn,
-      sellTokenOut
+      buyTokenIndexIn,
+      buyTokenIndexOut
     };
   });
 
@@ -78,45 +79,67 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState }) => {
             <th scope="col">Trade ID</th>
             <th scope="col">Market ID</th>
             <th scope="col">
-              Buy Side<br />
-              <i>(Input Token Index → Output Token Index)</i>
+              Buy Side
             </th>
             <th scope="col">
-              Sell Side<br />
-              <i>(Input Token Index → Output Token Index)</i>
+              Sell Side
             </th>
-            <th scope="col">Buy Actual Amount</th>
-            <th scope="col">Sell Actual Amount</th>
+            <th scope="col">Trading Amount</th>
           </tr>
         </MDBTableHead>
         <MDBTableBody>
-          {enrichedTrades.map((trade, index) => (
-            <tr key={index}>
-              <td>{(currentPage - 1) * rowsPerPage + index + 1}</td>
-              <td>{trade.trade_id}</td>
-              {(() => {
-                  const order = orders.find(order => order.id === trade.a_order_id);
-                  return order ? (
-                    <td>{order.market_id}</td>
-                  ) : (
-                    <td>–</td>
-                  );
-                })()
-              }
-              <td>
-                {trade.buyTokenIn} → {trade.buyTokenOut}
-                <br />
-                (Order ID: {trade.a_order_id})
-              </td>
-              <td>
-                {trade.sellTokenIn} → {trade.sellTokenOut}
-                <br />
-                (Order ID: {trade.b_order_id})
-              </td>
-              <td>{trade.a_actual_amount}</td>
-              <td>{trade.b_actual_amount}</td>
-            </tr>
-          ))}
+          {enrichedTrades.map((trade, index) => {
+            const aOrder = orders.find(order => order.id === trade.a_order_id);
+            const bOrder = orders.find(order => order.id === trade.b_order_id);
+            const marketId = aOrder?.market_id ?? '–';
+
+            const renderOrderPopover = (order: Order | undefined) => {
+              if (!order) return '–';
+              return (
+                <MDBPopover
+                  placement="right"
+                  dismiss
+                  btnChildren={`View orderId ${order.id}`}
+                  btnClassName="btn btn-sm btn-outline-primary"
+                  popperTag="div"
+                >
+                  <MDBPopoverBody className="text-start">
+                    <div><strong>Order ID:</strong> {order.id}</div>
+                    <div><strong>Market ID:</strong> {order.market_id}</div>
+                    <div><strong>Flag:</strong> {order.flag === FLAG_BUY ? "Buy": "Sell"}</div>
+                    <div><strong>Pid:</strong> {order.pid}</div>
+                    <div><strong>Type:</strong> {typeMap[order.type_]}</div>
+                    <div><strong>Status:</strong> {statusMap[order.status]}</div>
+                    <div><strong>Price:</strong> {order.price}</div>
+                    <div><strong>A Token Amount:</strong> {order.a_token_amount}</div>
+                    <div><strong>B Token Amount:</strong> {order.b_token_amount}</div>
+                    <div><strong>Locked Balance:</strong> {order.lock_balance}</div>
+                    <div><strong>Locked Fee:</strong> {order.lock_fee}</div>
+                    <div><strong>Already Deal Amount:</strong> {order.already_deal_amount}</div>
+                  </MDBPopoverBody>
+                </MDBPopover>
+              );
+            };
+
+            return (
+              <tr key={index}>
+                <td>{(currentPage - 1) * rowsPerPage + index + 1}</td>
+                <td>{trade.trade_id}</td>
+                <td>{marketId}</td>
+                <td>
+                  {renderOrderPopover(aOrder)}
+                  <br />
+                  (Paying Token Index {trade.buyTokenIndexIn} → Receiving Token Index {trade.buyTokenIndexOut})
+                </td>
+                <td>
+                  {renderOrderPopover(bOrder)}
+                  <br />
+                  (Paying Token Index {trade.buyTokenIndexOut} → Receiving Token Index {trade.buyTokenIndexIn})
+                </td>
+                <td>{trade.a_actual_amount}</td>
+              </tr>
+            );
+          })}
         </MDBTableBody>
       </MDBTable>
 

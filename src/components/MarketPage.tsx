@@ -5,12 +5,12 @@ import { useAppSelector } from '../app/hooks';
 import "./style.scss";
 import { selectMarketInfo } from "../data/market";
 
-const typeMap: { [key: number]: string } = {
+export const typeMap: { [key: number]: string } = {
   0: "Limit Order",
   1: "Market Order"
 }
 
-const statusMap: { [key: number]: string } = {
+export const statusMap: { [key: number]: string } = {
   0: 'Live',
   1: 'Match',
   2: 'Partial Match',
