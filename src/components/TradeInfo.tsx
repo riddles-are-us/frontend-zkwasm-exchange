@@ -20,6 +20,7 @@ import { FLAG_BUY } from './Commands';
 
 interface TradeInfoProps {
   playerState: UserState | null;
+  handleTabClick: (value: string) => void;
 }
 
 interface Trade {
@@ -30,7 +31,7 @@ interface Trade {
   trade_id: number;
 }
 
-export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState }) => {
+export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState, handleTabClick }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const userState = useAppSelector(selectUserState);
   const marketInfo = useAppSelector(selectMarketInfo);
@@ -125,7 +126,7 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState }) => {
               <tr key={index}>
                 <td>{(currentPage - 1) * rowsPerPage + index + 1}</td>
                 <td>{trade.trade_id}</td>
-                <td>{marketId}</td>
+                <td onClick={() => handleTabClick("4")} className="tableMarket">{marketId}</td>
                 <td>
                   {renderOrderPopover(aOrder)}
                   <br />

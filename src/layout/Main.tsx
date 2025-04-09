@@ -163,7 +163,7 @@ export function Main() {
         <MarketPage />
       </MDBTabsPane>
       <MDBTabsPane open={activeTab === "5"}>
-        <TradeInfo playerState={playerState} />
+        <TradeInfo playerState={playerState} handleTabClick={handleTabClick} />
       </MDBTabsPane>
     </MDBTabsContent>
 
