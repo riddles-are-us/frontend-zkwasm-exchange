@@ -77,8 +77,14 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState }) => {
             <th scope="col">#</th>
             <th scope="col">Trade ID</th>
             <th scope="col">Market ID</th>
-            <th scope="col">Buy Side<br />(<i>Token Index (In → Out)</i>)</th>
-            <th scope="col">Sell Side<br />(<i>Token Index (In → Out)</i>)</th>
+            <th scope="col">
+              Buy Side<br />
+              <i>(Input Token Index → Output Token Index)</i>
+            </th>
+            <th scope="col">
+              Sell Side<br />
+              <i>(Input Token Index → Output Token Index)</i>
+            </th>
             <th scope="col">Buy Actual Amount</th>
             <th scope="col">Sell Actual Amount</th>
           </tr>
