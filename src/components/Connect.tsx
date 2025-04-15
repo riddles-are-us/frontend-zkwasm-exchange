@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import "./style.scss";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import {AccountSlice} from "zkwasm-minirollup-browser";
 import {

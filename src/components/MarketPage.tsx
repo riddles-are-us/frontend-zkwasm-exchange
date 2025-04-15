@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { MDBContainer, MDBRow, MDBCol, MDBCard, MDBCardBody, MDBCardHeader, MDBTable, MDBTableBody, MDBTableHead } from 'mdb-react-ui-kit';
 import { selectUserState } from '../data/state';
 import { useAppSelector } from '../app/hooks';
-import "./style.scss";
 import { selectMarketInfo } from "../data/market";
 
 export const typeMap: { [key: number]: string } = {

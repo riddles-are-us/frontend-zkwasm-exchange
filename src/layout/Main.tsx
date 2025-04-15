@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import 'mdb-react-ui-kit/dist/css/mdb.min.css';
 import "@fortawesome/fontawesome-free/css/all.min.css";
-import "./style.scss";
+import "./style.css";
 import { selectConnectState } from "../data/state";
 import { useAppSelector, useAppDispatch } from "../app/hooks";
 import { AccountSlice, ConnectState } from "zkwasm-minirollup-browser";

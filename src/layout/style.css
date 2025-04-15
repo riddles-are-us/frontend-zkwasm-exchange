@@ -36,3 +36,7 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
+
+.tableMarket {
+  cursor: pointer;
+}
