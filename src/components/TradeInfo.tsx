@@ -46,7 +46,7 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState, handleTabClic
     trades = playerState.state.trades;
   }
 
-  const totalPages = Math.ceil(trades.length / rowsPerPage);
+  const totalPages = trades ? Math.ceil(trades.length / rowsPerPage) : 0;
 
   const currentTrades = trades.slice(
     (currentPage - 1) * rowsPerPage,

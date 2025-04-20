@@ -1,216 +1,68 @@
-import React, { useState } from 'react';
-import { MDBBtn, MDBContainer, MDBRow, MDBCol, MDBIcon } from 'mdb-react-ui-kit';
-import { useAppSelector, useAppDispatch } from "../app/hooks";
-import { sendTransaction, queryStateI, queryState } from "../request";
-import { createCommand, LeHexBN } from "zkwasm-minirollup-rpc";
-import { selectUserState, Order } from '../data/state';
-import { address2BigUint64Array, getNonce } from "../utils/transaction";
-import { AccountSlice } from "zkwasm-minirollup-browser";
+import React, { useCallback, useState } from "react";
+import {
+  MDBContainer,
+  MDBNavbar,
+  MDBCol
+} from 'mdb-react-ui-kit';
 import { ResultModal } from "../modals/ResultModal";
-import AddTokenModal from "../modals/AddTokenModal";
-import UpdateTokenModal from "../modals/UpdateTokenModal";
-import WithdrawTokenModal from "../modals/WithdrawTokenModal";
-import AddLimitOrderModal from "../modals/AddLimitOrderModal";
-import AddMarketOrderModal from "../modals/AddMarketOrderModal";
-import CancelOrderModal from "../modals/CancelOrderModal";
-import AddMarketModal from "../modals/AddMarketModal";
-import CloseMarketModal from "../modals/CloseMarketModal";
-import TransferModal from "../modals/TransferModal";
-import DepositTokenModal from "../modals/DepositTokenModal";
+import { TradingPanelUI } from "polymarket-ui";
+import { useAppSelector, useAppDispatch } from "../app/hooks";
+import { AccountSlice } from "zkwasm-minirollup-browser";
+import { sendTransaction, queryState } from "../request";
+import { createCommand } from "zkwasm-minirollup-rpc";
+import { selectUserState, Order } from '../data/state';
 import { selectMarketInfo } from "../data/market";
-import { checkHelper } from "../utils/transaction";
 import { Market } from "../data/market";
+import { checkHelper } from "../utils/transaction";
+import { getNonce } from "../utils/transaction";
 
+const FLAG_BUY = 1;
+const FLAG_SELL = 0;
 const PRECISION = BigInt(1e9);
 const MAX_64_BIT = BigInt('9223372036854775807');
-export const FEE = 3;
-export const FEE_TOKEN_INDEX = 0;
+const FEE = 3;
+const FEE_TOKEN_INDEX = 0;
 const TYPE_LIMIT = 0;
 const TYPE_MARKET = 1;
 const MARKET_STATUS_CLOSE = 0;
 // Order status
 const STATUS_LIVE = 0;
-export const FLAG_BUY = 1;
-const FLAG_SELL = 0;
-const CMD_ADD_TOKEN = 1n;
-const CMD_UPDATE_TOKEN = 12n;
-const CMD_ADD_MARKET = 2n;
-const CMD_DEPOSIT_TOKEN = 3n;
 const CMD_ADD_LIMIT_ORDER = 5n;
 const CMD_ADD_MARKET_ORDER = 6n;
-const CMD_CANCEL_ORDER = 7n;
-const CMD_CLOSE_MARKET = 8n;
-const CMD_TRANSFER = 9n;
-const CMD_WITHDRAW = 10n;
 const CMD_ADD_TRADE = 11n;
 const SEVER_ADMIN_KEY = "1234567";
 
-export default function Commands() {
+interface TradingPanelProps {
+  currentPrice: number;
+  maxAmount: number;
+  isMobileView?: boolean;
+  selectedMarket: number | null;
+  setSelectedMarket: React.Dispatch<React.SetStateAction<number | null>>;
+}
+
+const TradingPanel: React.FC<TradingPanelProps> = ({
+  currentPrice,
+  maxAmount,
+  isMobileView = false,
+  selectedMarket,
+  setSelectedMarket
+}) => {
   const dispatch = useAppDispatch();
-  const userState = useAppSelector(selectUserState);
-  const l2account = useAppSelector(AccountSlice.selectL2Account);
-  const marketInfo = useAppSelector(selectMarketInfo);
+  const [selectedTab, setSelectedTab] = useState<"buy" | "sell">("buy");
+  const [selectedOption, setSelectedOption] = useState<"yes" | "no">("yes");
+  const [tradeType, setTradeType] = useState<"market" | "limit">("market");
+  const [limitPrice, setLimitPrice] = useState<string>(currentPrice.toString());
+  const [amount, setAmount] = useState<string>("0");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
   const [showResult, setShowResult] = useState(false);
-  const [showAddTokenModal, setShowAddTokenModal] = useState(false);
-  const [showUpdateTokenModal, setShowUpdateTokenModal] = useState(false);
-  const [showWithdrawTokenModal, setShowWithdrawTokenModal] = useState(false);
-  const [showAddLimitOrderModal, setShowAddLimitOrderModal] = useState(false);
-  const [showAddMarketOrderModal, setShowAddMarketOrderModal] = useState(false);
-  const [showCancelOrderModal, setShowCancelOrderModal] = useState(false);
-  const [showAddMarketModal, setShowAddMarketModal] = useState(false);
-  const [showCloseMarketModal, setShowCloseMarketModal] = useState(false);
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [showDepositTokenModal, setShowDepositTokenModal] = useState(false);
-
+  const l2account = useAppSelector(AccountSlice.selectL2Account);
+  const marketInfo = useAppSelector(selectMarketInfo);
+  const userState = useAppSelector(selectUserState);
   const nonce = userState?.player?.nonce || 0;
 
-  const addToken = async (tokenIndex: bigint, address: string) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowAddTokenModal(false);
-      return;
-    }
-
-    let addr = address2BigUint64Array(address);
-    let params = [tokenIndex];
-    params.push(...addr);
-
-    const nonce = await getNonce(SEVER_ADMIN_KEY);
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_ADD_TOKEN, params),
-        prikey: SEVER_ADMIN_KEY,
-      })
-    );
-
-    if (sendTransaction.fulfilled.match(action)) {
-      const infoMessage: string = "Token added successfully!";
-      return infoMessage;
-    } else if(sendTransaction.rejected.match(action)) {
-      throw Error("Error: " +  action.payload);
-    }
-  }
-
-  const updateToken = async (tokenIndex: bigint, address: string) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowUpdateTokenModal(false);
-      return;
-    }
-
-    let addr = address2BigUint64Array(address);
-    let params = [tokenIndex];
-    params.push(...addr);
-
-    const nonce = await getNonce(SEVER_ADMIN_KEY);
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_UPDATE_TOKEN, params),
-        prikey: SEVER_ADMIN_KEY,
-      })
-    );
-    if (sendTransaction.fulfilled.match(action)) {
-      const infoMessage: string = "Token updated successfully!";
-      return infoMessage;
-    } else if(sendTransaction.rejected.match(action)) {
-      throw Error("Error: " +  action.payload);
-    }
-  }
-
-  const depositToken = async (pid: string, tokenIdx: bigint, amount: bigint) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowDepositTokenModal(false);
-      return;
-    }
-    let pid2 = new LeHexBN(pid).toU64Array();
-    let params = [pid2[1], pid2[2], tokenIdx, amount];
-
-    const nonce = await getNonce(SEVER_ADMIN_KEY);
-    const action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_DEPOSIT_TOKEN, params),
-        prikey: SEVER_ADMIN_KEY,
-      })
-    );
-    if (sendTransaction.fulfilled.match(action)) {
-      const infoMessage: string = "Token deposited successfully!";
-      return infoMessage;
-    } else if(sendTransaction.rejected.match(action)) {
-      throw new Error("Error: " +  action.payload);
-    }
-  }
-
-  const withdrawToken = async (tokenIndex: bigint, address: string, amount: bigint) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowWithdrawTokenModal(false);
-      return;
-    }
-
-    let addr = address2BigUint64Array(address);
-    let params = [tokenIndex];
-    params.push(...addr);
-    params.push(amount);
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_WITHDRAW, params),
-        prikey: l2account!.getPrivateKey(),
-      })
-    );
-    if (sendTransaction.fulfilled.match(action)) {
-      const infoMessage: string = "Token withdrawed successfully!";
-      return infoMessage;
-    } else if(sendTransaction.rejected.match(action)) {
-      let message = "";
-      if(String(action.payload).includes("BalanceNotEnough")) {
-        const index = tokenIndex.toString();
-        const balance = userState!.player!.data.positions[index].balance;
-        message = ". Wallet player's balance for Token " + index + ": " + balance;
-      }
-      throw new Error("Error: " +  action.payload + message);
-    }
-  }
-
-  const transfer = async (pid: string, tokenIdx: bigint, amount: bigint) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowTransferModal(false);
-      return;
-    }
-
-    let pid2 = new LeHexBN(pid).toU64Array();
-    let params = [pid2[1], pid2[2], tokenIdx, amount];
-
-    const nonce = await getNonce(SEVER_ADMIN_KEY);
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_TRANSFER,  params),
-        prikey: SEVER_ADMIN_KEY,
-      })
-    );
-    if (sendTransaction.fulfilled.match(action)) {
-      const infoMessage: string = "Token transfered successfully!";
-      return infoMessage;
-    } else if(sendTransaction.rejected.match(action)) {
-      let message = "";
-      let state:any = await queryStateI(SEVER_ADMIN_KEY);
-      if(String(action.payload).includes("BalanceNotEnough")) {
-        const index = tokenIdx.toString();
-        const balance = state!.player!.data.positions[index].balance;
-        message = ". Server admin's balance for Token " + index + ": " + balance;
-      }
-      throw new Error("Error: " +  action.payload + message);
-    }
-  }
-
-  const addTrade = async (aOrderId: bigint, bOrderId: bigint, aActualAmount: bigint, bActualAmount: bigint) => {
+  const addTrade = useCallback(async (aOrderId: bigint, bOrderId: bigint, aActualAmount: bigint, bActualAmount: bigint) => {
     if(!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
@@ -238,9 +90,9 @@ export default function Commands() {
     } else if(sendTransaction.rejected.match(action)) {
       throw Error("Error: " +  action.payload);
     }
-  }
+  }, [dispatch, l2account]);
 
-  const checkOrders = (
+  const checkOrders = useCallback((
     orders: Order[],
     aOrderId: bigint,
     bOrderId: bigint,
@@ -284,9 +136,9 @@ export default function Commands() {
       return false;
     }
     return true;
-  }
-
-  const matchOrdersGetTradeParams = async (orders: Order[], incomingOrder: Order) => {
+  }, [marketInfo]);
+  
+  const matchOrdersGetTradeParams = useCallback(async (orders: Order[], incomingOrder: Order) => {
     let result = {aOrderId: 0n, bOrderId: 0n, aActualAmount: 0n, bActualAmount: 0n};
     if (incomingOrder.flag === FLAG_BUY) {
       // Buy order: Sort sell orders by price (ascending)
@@ -452,14 +304,15 @@ export default function Commands() {
       }
       return result;
     }
-  }
-
-  async function orderCheck(
+  }, [checkOrders]);
+  
+  const orderCheck = useCallback(async (
     f: ()=> any,
     market: Market,
     flag: bigint,
     cost: bigint,
-    check:(before: any, after: any, market: Market, flag: bigint, cost: bigint) => void) {
+    check:(before: any, after: any, market: Market, flag: bigint, cost: bigint) => void
+  ) => {
     // Query state before placing the market order
     let before = await dispatch(queryState(l2account!.getPrivateKey()));
     const action = await f();
@@ -470,13 +323,12 @@ export default function Commands() {
     check(before.payload, after.payload, market, flag, cost);
 
     return action;
-  }
+  }, [dispatch, l2account]);
 
-  const addMarketOrder = async (marketId: bigint, flag: bigint, bTokenAmount: bigint, aTokenAmount: bigint) => {
+  const addMarketOrder = useCallback(async (marketId: bigint, flag: bigint, bTokenAmount: bigint, aTokenAmount: bigint) => {
     if (!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
-      setShowAddMarketOrderModal(false);
       return;
     }
 
@@ -492,11 +344,11 @@ export default function Commands() {
       return action;
     }
 
+    // comment because of no market data in state
     const filteredMarkets = marketInfo.filter(market => BigInt(market.marketId) === marketId);
     if(filteredMarkets.length === 0) {
       setInfoMessage("Market not exist");
       setShowResult(true);
-      setShowAddLimitOrderModal(false);
       return;
     }
     const market = filteredMarkets[0];
@@ -567,13 +419,12 @@ export default function Commands() {
       message = ". Wallet player's balance for Token " + index + ": " + balance + ". Wallet player's lock balance for Token " + index + ": " + lockBalance;
       throw new Error("Error: " +  action.payload + message);
     }
-  };
+  }, [addTrade, dispatch, l2account, marketInfo, matchOrdersGetTradeParams, nonce, orderCheck, userState]);
 
-  const addLimitOrder = async (marketId: bigint, flag: bigint, limitPrice: bigint, amount: bigint) => {
+  const addLimitOrder = useCallback(async (marketId: bigint, flag: bigint, limitPrice: bigint, amount: bigint) => {
     if (!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
       setShowResult(true);
-      setShowAddLimitOrderModal(false);
       return;
     }
 
@@ -594,7 +445,6 @@ export default function Commands() {
     if(filteredMarkets.length === 0) {
       setInfoMessage("Market not exist");
       setShowResult(true);
-      setShowAddLimitOrderModal(false);
       return;
     }
     const market = filteredMarkets[0];
@@ -655,208 +505,119 @@ export default function Commands() {
       message = ". Wallet player's balance for Token " + index + ": " + balance + ". Wallet player's lock balance for Token " + index + ": " + lockBalance;
       throw new Error("Error: " +  action.payload + message);
     }
-  };
+  }, [addTrade, dispatch, l2account, marketInfo, matchOrdersGetTradeParams, nonce, orderCheck, userState]);
+  
+  const handleTabChange = useCallback((tab: "buy" | "sell") => {
+    setSelectedTab(tab);
+  }, []);
 
-  const cancelOrder = async (orderId: bigint) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
+  const handleOptionChange = useCallback((option: "yes" | "no") => {
+    setSelectedOption(option);
+  }, []);
+
+  const handleTradeTypeChange = useCallback((type: "market" | "limit") => {
+    setTradeType(type);
+    setIsDropdownOpen(false);
+  }, []);
+
+  const handleLimitPriceChange = useCallback((value: string) => {
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+      setLimitPrice(value);
+    }
+  }, []);
+
+  const handleAmountChange = useCallback((value: string) => {
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+      setAmount(value);
+    }
+  }, []);
+
+  const handleQuickAmountClick = useCallback((value: number) => {
+    setAmount(prev => {
+      const currentAmount = parseFloat(prev) || 0;
+      const newAmount = currentAmount + value;
+      return Math.min(newAmount, maxAmount!).toString();
+    });
+  }, [maxAmount]);
+
+  const handleSubmit = useCallback(async () => {
+    console.log(`${selectedTab} order submitted:`, {
+      amount: parseFloat(amount),
+      price: currentPrice,
+      total: (parseFloat(amount || "0") * currentPrice) / 100,
+    });
+
+    let flag = 0;
+    if(selectedTab === "buy") {
+      flag = 1;
+    } else {
+      flag = 0;
+    }
+
+    if(!selectedMarket) {
+      setInfoMessage("No existing markets or no market is selected!");
       setShowResult(true);
-      setShowCancelOrderModal(false);
-      return;
+    } else {
+      if(tradeType === "limit") {
+        const result = await addLimitOrder(BigInt(selectedMarket), BigInt(flag), BigInt(limitPrice), BigInt(amount));
+        if(result) {
+          setInfoMessage(result);
+          setShowResult(true);
+        }
+      } else {
+        let bTokenAmount = "0";
+        let aTokenAmount = "0";
+        if(selectedTab === "buy") {
+          aTokenAmount = amount;
+        } else {
+          bTokenAmount = amount;
+        }
+        const result = await addMarketOrder(BigInt(selectedMarket), BigInt(flag), BigInt(bTokenAmount), BigInt(aTokenAmount));
+        if(result) {
+          setInfoMessage(result);
+          setShowResult(true);
+        }
+      }
     }
+  }, [amount, selectedTab, currentPrice, addLimitOrder, addMarketOrder, limitPrice, selectedMarket, tradeType]);
 
-    let params = [orderId];
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_CANCEL_ORDER, params),
-        prikey: l2account!.getPrivateKey(),
-      })
-    );
-    if (sendTransaction.fulfilled.match(action)) {
-      const orders = action.payload.state.orders;
-      const status = orders[Number(orderId) - 1].status;
-      //| status | uint8 | live/match/partial_match/partial_cancel/cancel |
-      // status 4 means cancel
-      return "Success: orderId " + orderId +"'s status is " + status;
-    } else if(sendTransaction.rejected.match(action)) {
-      throw Error("Error: " +  action.payload);
-    }
-  }
-
-  const addMarket = async (tokenAIdx: bigint, tokenBIdx: bigint, lastPrice: bigint) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowAddMarketModal(false);
-      return;
-    }
-
-    let params = [tokenAIdx, tokenBIdx, lastPrice];
-    const nonce = await getNonce(SEVER_ADMIN_KEY);
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_ADD_MARKET, params),
-        prikey: SEVER_ADMIN_KEY,
-      })
-    );
-    if (sendTransaction.fulfilled.match(action)) {
-      const counter = action.payload.state.market_id_counter;
-      return "Success: market counter is " + counter;
-    } else if(sendTransaction.rejected.match(action)) {
-      throw Error("Error: " +  action.payload);
-    }
-  }
-
-  const closeMarket = async (marketId: bigint) => {
-    if(!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowCloseMarketModal(false);
-      return;
-    }
-
-    let params = [marketId];
-    const nonce = await getNonce(SEVER_ADMIN_KEY);
-    let action = await dispatch(
-      sendTransaction({
-        cmd: createCommand(BigInt(nonce), CMD_CLOSE_MARKET, params),
-        prikey: SEVER_ADMIN_KEY,
-      })
-    );
-    if (sendTransaction.fulfilled.match(action)) {
-      return "Market closed successfully!";
-    } else if(sendTransaction.rejected.match(action)) {
-      throw Error("Error: " +  action.payload);
-    }
+  const TradingPanelProps = {
+    currentPrice: 75,
+    selectedTab,
+    selectedOption,
+    tradeType,
+    limitPrice,
+    amount,
+    maxAmount,
+    isDropdownOpen,
+    isMoreMenuOpen,
+    onTabChange: handleTabChange,
+    onOptionChange: handleOptionChange,
+    onTradeTypeChange: handleTradeTypeChange,
+    onLimitPriceChange: handleLimitPriceChange,
+    setIsDropdownOpen,
+    onAmountChange: handleAmountChange,
+    onQuickAmountClick: handleQuickAmountClick,
+    onSubmit: handleSubmit,
+    setIsMoreMenuOpen,
   }
 
   return (
     <>
-      {/* Command Buttons */ }
-      <MDBContainer>
-        <MDBRow className="justify-content-start mt-4">
-          {/* Token Management Commands */}
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowAddTokenModal(true)} color="success" block>
-              <MDBIcon icon="plus-circle" /> Add Token
-            </MDBBtn>
-          </MDBCol>
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowUpdateTokenModal(true)} color="info" block>
-              <MDBIcon icon="refresh" /> Update Token
-            </MDBBtn>
-          </MDBCol>
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowDepositTokenModal(true)} color="primary" block>
-              <MDBIcon icon="arrow-up" /> Deposit Token
-            </MDBBtn>
-          </MDBCol>
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowWithdrawTokenModal(true)} color="danger" block>
-              <MDBIcon icon="arrow-down" /> Withdraw Token
-            </MDBBtn>
-          </MDBCol>
-        </MDBRow>
-
-        <MDBRow className="justify-content-start mt-4">
-          {/* Transfer and Deposit Commands */}
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowTransferModal(true)} color="success" block>
-              <MDBIcon icon="exchange-alt" /> Transfer Token
-            </MDBBtn>
-          </MDBCol>
-        </MDBRow>
-
-        <MDBRow className="justify-content-start mt-4">
-          {/* Market Management Commands */}
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowAddMarketModal(true)} color="info" block>
-              <MDBIcon icon="building" /> Add Market
-            </MDBBtn>
-          </MDBCol>
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowCloseMarketModal(true)} color="warning" block>
-              <MDBIcon icon="times" /> Close Market
-            </MDBBtn>
-          </MDBCol>
-        </MDBRow>
-
-        <MDBRow className="justify-content-start mt-4">
-          {/* Order Management Commands */}
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowAddLimitOrderModal(true)} color="primary" block>
-              <MDBIcon icon="plus" /> Add Limit Order
-            </MDBBtn>
-          </MDBCol>
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowAddMarketOrderModal(true)} color="primary" block>
-              <MDBIcon icon="plus" /> Add Market Order
-            </MDBBtn>
-          </MDBCol>
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowCancelOrderModal(true)} color="danger" block>
-              <MDBIcon icon="trash" /> Cancel Order
-            </MDBBtn>
-          </MDBCol>
-        </MDBRow>
+    <MDBNavbar expand='lg' light bgColor='light'>
+      <MDBContainer fluid>
+        <MDBCol md="12">
+          <TradingPanelUI {...TradingPanelProps} isMobileView={isMobileView} />
+        </MDBCol>
       </MDBContainer>
-
-      {/* Modals */}
-      <AddTokenModal
-        show={showAddTokenModal}
-        onClose={() => setShowAddTokenModal(false)}
-        handler={addToken}
-      />
-      <UpdateTokenModal
-        show={showUpdateTokenModal}
-        onClose={() => setShowUpdateTokenModal(false)}
-        handler={updateToken}
-      />
-      <WithdrawTokenModal
-        show={showWithdrawTokenModal}
-        onClose={() => setShowWithdrawTokenModal(false)}
-        handler={withdrawToken}
-      />
-      <AddLimitOrderModal
-        show={showAddLimitOrderModal}
-        onClose={() => setShowAddLimitOrderModal(false)}
-        handler={addLimitOrder}
-      />
-      <AddMarketOrderModal
-        show={showAddMarketOrderModal}
-        onClose={() => setShowAddMarketOrderModal(false)}
-        handler={addMarketOrder}
-      />
-      <CancelOrderModal
-        show={showCancelOrderModal}
-        onClose={() => setShowCancelOrderModal(false)}
-        handler={cancelOrder}
-      />
-      <AddMarketModal
-        show={showAddMarketModal}
-        onClose={() => setShowAddMarketModal(false)}
-        handler={addMarket}
-      />
-      <CloseMarketModal
-        show={showCloseMarketModal}
-        onClose={() => setShowCloseMarketModal(false)}
-        handler={closeMarket}
-      />
-      <TransferModal
-        show={showTransferModal}
-        onClose={() => setShowTransferModal(false)}
-        handler={transfer}
-      />
-      <DepositTokenModal
-        show={showDepositTokenModal}
-        onClose={() => setShowDepositTokenModal(false)}
-        handler={depositToken}
-      />
-      <ResultModal
-        infoMessage={infoMessage}
-        show={showResult}
-        onClose={() => setShowResult(false)}
-      />
+    </MDBNavbar>
+    <ResultModal
+      infoMessage={infoMessage}
+      show={showResult}
+      onClose={() => setShowResult(false)}
+    />
     </>
   );
 }
+
+export default TradingPanel;

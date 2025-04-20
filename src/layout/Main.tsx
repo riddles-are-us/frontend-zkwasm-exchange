@@ -28,14 +28,17 @@ import {
   MDBRow,
   MDBCol,
   MDBTypography,
-  MDBTabs,
-  MDBTabsItem,
-  MDBTabsLink,
   MDBTabsContent,
   MDBTabsPane
 } from 'mdb-react-ui-kit';
 import { queryStateI } from "../request";
 import { UserState } from "../data/state";
+import {
+  useMediaQuery,
+  useThemeContext
+} from "polymarket-ui";
+import TradingPanel from "../components/TradingPanel";
+import { Comments } from "../components/Comments";
 
 const CMD_REGISTER_PLAYER = 4n;
 // hardcode admin for test
@@ -49,6 +52,9 @@ export function Main() {
   const [activeTab, setActiveTab] = useState("1");
   const [adminState, setAdminState] = useState<UserState | null>(null);
   const [playerState, setPlayerState] = useState<UserState | null>(null);
+  const isMobile = useMediaQuery("(max-width: 1024px)");
+  const { isDarkMode, toggleDarkMode } = useThemeContext();
+  const [selectedMarket, setSelectedMarket] = useState<number | null>(null);
 
   async function updateState() {
     dispatch(queryMarket());
@@ -118,70 +124,58 @@ export function Main() {
 
   return (
     <>
-    {/* Navigation Bar */}
-    <Nav />
+      <button onClick={toggleDarkMode}>Toggle {isDarkMode ? "Light" : "Dark"} Mode</button>
+      <div className={`min-h-screen bg-gray-100 dark:bg-gray-900`}>
+        <Nav handleTabClick={handleTabClick} />
+        <div className="container mx-auto px-4 py-6 pb-[120px] lg:pb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left column */}
+            <div className="lg:col-span-2 space-y-6">
+              <MDBTabsContent style={{ maxHeight: "400px", overflowY: "auto" }}>
+                <MDBTabsPane open={activeTab === "1"}>
+                  <AdminInfo adminState={adminState} />
+                </MDBTabsPane>
+                <MDBTabsPane open={activeTab === "2"}>
+                  <PlayerInfo playerState={playerState} />
+                </MDBTabsPane>
+                <MDBTabsPane open={activeTab === "3"}>
+                  <TokenInfo />
+                </MDBTabsPane>
+                <MDBTabsPane open={activeTab === "4"}>
+                  <MarketPage selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} />
+                </MDBTabsPane>
+                <MDBTabsPane open={activeTab === "5"}>
+                  <TradeInfo playerState={playerState} handleTabClick={handleTabClick} />
+                </MDBTabsPane>
+              </MDBTabsContent>
 
-    <MDBTabs className="mb-3">
-      <MDBTabsItem>
-        <MDBTabsLink onClick={() => handleTabClick("1")} active={activeTab === "1"}>
-          Admin Balance
-        </MDBTabsLink>
-      </MDBTabsItem>
-      <MDBTabsItem>
-        <MDBTabsLink onClick={() => handleTabClick("2")} active={activeTab === "2"}>
-          Wallet Player Balance
-        </MDBTabsLink>
-      </MDBTabsItem>
-      <MDBTabsItem>
-        <MDBTabsLink onClick={() => handleTabClick("3")} active={activeTab === "3"}>
-          Token Info
-        </MDBTabsLink>
-      </MDBTabsItem>
-      <MDBTabsItem>
-        <MDBTabsLink onClick={() => handleTabClick("4")} active={activeTab === "4"}>
-          Market Data
-        </MDBTabsLink>
-      </MDBTabsItem>
-      <MDBTabsItem>
-        <MDBTabsLink onClick={() => handleTabClick("5")} active={activeTab === "5"}>
-          Trade Info
-        </MDBTabsLink>
-      </MDBTabsItem>
-    </MDBTabs>
-
-    <MDBTabsContent style={{ maxHeight: "400px", overflowY: "auto" }}>
-      <MDBTabsPane open={activeTab === "1"}>
-        <AdminInfo adminState={adminState} />
-      </MDBTabsPane>
-      <MDBTabsPane open={activeTab === "2"}>
-        <PlayerInfo playerState={playerState} />
-      </MDBTabsPane>
-      <MDBTabsPane open={activeTab === "3"}>
-        <TokenInfo />
-      </MDBTabsPane>
-      <MDBTabsPane open={activeTab === "4"}>
-        <MarketPage />
-      </MDBTabsPane>
-      <MDBTabsPane open={activeTab === "5"}>
-        <TradeInfo playerState={playerState} handleTabClick={handleTabClick} />
-      </MDBTabsPane>
-    </MDBTabsContent>
-
-    <MDBRow className="mt-4">
-      <MDBCol>
-        <MDBCard>
-          <MDBCardBody>
-            <MDBTypography tag="h4" className="mb-3 text-center">
-              Execute Commands
-            </MDBTypography>
-            <Commands />
-          </MDBCardBody>
-        </MDBCard>
-      </MDBCol>
-    </MDBRow>
-
-    {/* Footer */}
-    <Footer />
+              <MDBRow className="mt-4">
+                <MDBCol>
+                  <MDBCard>
+                    <MDBCardBody>
+                      <MDBTypography tag="h4" className="mb-3 text-center">
+                        Execute Commands
+                      </MDBTypography>
+                      <Commands />
+                    </MDBCardBody>
+                  </MDBCard>
+                </MDBCol>
+              </MDBRow>
+              <Comments />
+            </div>
+            {/* Right column - Only visible on desktop */}
+            {!isMobile && (
+              <div className="lg:col-span-1">
+                <TradingPanel selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} currentPrice={75} maxAmount={1000} />
+              </div>
+            )}
+          </div>
+        </div>
+        {/* Mobile trading panel */}
+        {isMobile && <TradingPanel selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} currentPrice={75} maxAmount={1000} isMobileView={true} />}
+      </div>
+      {/* Footer */}
+      <Footer />
     </>
   );
 }
