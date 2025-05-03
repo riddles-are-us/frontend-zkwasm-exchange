@@ -46,12 +46,12 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState, handleTabClic
     trades = playerState.state.trades;
   }
 
-  const totalPages = trades ? Math.ceil(trades.length / rowsPerPage) : 0;
+  const totalPages = (trades && trades.length) ? Math.ceil(trades.length / rowsPerPage) : 0;
 
-  const currentTrades = trades.slice(
+  const currentTrades = (trades && trades.length) ? trades.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
-  );
+  ) : [];
 
   const enrichedTrades = currentTrades.map((trade) => {
     const aOrder = orders[trade.a_order_id];
