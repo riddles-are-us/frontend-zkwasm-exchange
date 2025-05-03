@@ -7,7 +7,8 @@ const protocol = currentLocation.protocol; // e.g., 'http:' or 'https:'
 const hostname = currentLocation.hostname; // e.g., 'sinka' or 'localhost'
 
 // We assume the rpc is at port 3000
-const fullUrl = `${protocol}//${hostname}:3000`
+//const fullUrl = `${protocol}//${hostname}:3000`
+const fullUrl = "https://rpc.zkwasm-exchange.zkwasm.ai/"
 const rpc = new ZKWasmAppRpc(fullUrl);
 
 async function queryConfigI() {
