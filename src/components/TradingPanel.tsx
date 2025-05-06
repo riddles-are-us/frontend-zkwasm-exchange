@@ -13,8 +13,7 @@ import { createCommand } from "zkwasm-minirollup-rpc";
 import { selectUserState, Order } from '../data/state';
 import { selectMarketInfo } from "../data/market";
 import { Market } from "../data/market";
-import { checkHelper } from "../utils/transaction";
-import { getNonce } from "../utils/transaction";
+import { checkHelper, getNonce, formatErrorMessage } from "../utils/transaction";
 
 const FLAG_BUY = 1;
 const FLAG_SELL = 0;
@@ -541,43 +540,49 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
   }, [maxAmount]);
 
   const handleSubmit = useCallback(async () => {
-    console.log(`${selectedTab} order submitted:`, {
-      amount: parseFloat(amount),
-      price: currentPrice,
-      total: (parseFloat(amount || "0") * currentPrice) / 100,
-    });
+    try {
+      console.log(`${selectedTab} order submitted:`, {
+        amount: parseFloat(amount),
+        price: currentPrice,
+        total: (parseFloat(amount || "0") * currentPrice) / 100,
+      });
 
-    let flag = 0;
-    if(selectedTab === "buy") {
-      flag = 1;
-    } else {
-      flag = 0;
-    }
-
-    if(!selectedMarket) {
-      setInfoMessage("No existing markets or no market is selected!");
-      setShowResult(true);
-    } else {
-      if(tradeType === "limit") {
-        const result = await addLimitOrder(BigInt(selectedMarket), BigInt(flag), BigInt(limitPrice), BigInt(amount));
-        if(result) {
-          setInfoMessage(result);
-          setShowResult(true);
-        }
+      let flag = 0;
+      if(selectedTab === "buy") {
+        flag = 1;
       } else {
-        let bTokenAmount = "0";
-        let aTokenAmount = "0";
-        if(selectedTab === "buy") {
-          aTokenAmount = amount;
+        flag = 0;
+      }
+
+      if(!selectedMarket) {
+        setInfoMessage("No existing markets or no market is selected!");
+        setShowResult(true);
+      } else {
+        if(tradeType === "limit") {
+          const result = await addLimitOrder(BigInt(selectedMarket), BigInt(flag), BigInt(limitPrice), BigInt(amount));
+          if(result) {
+            setInfoMessage(result);
+            setShowResult(true);
+          }
         } else {
-          bTokenAmount = amount;
-        }
-        const result = await addMarketOrder(BigInt(selectedMarket), BigInt(flag), BigInt(bTokenAmount), BigInt(aTokenAmount));
-        if(result) {
-          setInfoMessage(result);
-          setShowResult(true);
+          let bTokenAmount = "0";
+          let aTokenAmount = "0";
+          if(selectedTab === "buy") {
+            aTokenAmount = amount;
+          } else {
+            bTokenAmount = amount;
+          }
+          const result = await addMarketOrder(BigInt(selectedMarket), BigInt(flag), BigInt(bTokenAmount), BigInt(aTokenAmount));
+          if(result) {
+            setInfoMessage(result);
+            setShowResult(true);
+          }
         }
       }
+    } catch (error) {
+      const err = formatErrorMessage(error);
+      setInfoMessage(err);
+      setShowResult(true);
     }
   }, [amount, selectedTab, currentPrice, addLimitOrder, addMarketOrder, limitPrice, selectedMarket, tradeType]);
 
