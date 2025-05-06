@@ -54,14 +54,42 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState, handleTabClic
   ) : [];
 
   const enrichedTrades = currentTrades.map((trade) => {
-    const aOrder = orders[trade.a_order_id];
+    const aOrder = orders.find(order => order.id === trade.a_order_id);
+    const bOrder = orders.find(order => order.id === trade.b_order_id);
 
-    const market = marketInfo.filter(market => market.marketId === aOrder.market_id);
+    if (!aOrder) {
+      return {
+        ...trade,
+        aOrder: undefined,
+        bOrder: undefined,
+        marketId: '–',
+        buyTokenIndexIn: null,
+        buyTokenIndexOut: null
+      };
+    }
+
+    const marketId = aOrder.market_id;
+    const market = marketInfo.filter(market => market.marketId === marketId);
+
+    if (market.length === 0) {
+      return {
+        ...trade,
+        aOrder,
+        bOrder,
+        marketId: "-",
+        buyTokenIndexIn: null,
+        buyTokenIndexOut: null
+      };
+    }
+
     const buyTokenIndexIn = market[0].tokenA;
     const buyTokenIndexOut = market[0].tokenB;
 
     return {
       ...trade,
+      aOrder,
+      bOrder,
+      marketId,
       buyTokenIndexIn,
       buyTokenIndexOut
     };
@@ -69,6 +97,34 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState, handleTabClic
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const renderOrderPopover = (order: Order | undefined) => {
+    if (!order) return '–';
+    return (
+      <MDBPopover
+        placement="right"
+        dismiss
+        btnChildren={`View orderId ${order.id}`}
+        btnClassName="btn btn-sm btn-outline-primary"
+        popperTag="div"
+      >
+        <MDBPopoverBody className="text-start">
+          <div><strong>Order ID:</strong> {order.id}</div>
+          <div><strong>Market ID:</strong> {order.market_id}</div>
+          <div><strong>Flag:</strong> {order.flag === FLAG_BUY ? "Buy": "Sell"}</div>
+          <div><strong>Pid:</strong> {order.pid}</div>
+          <div><strong>Type:</strong> {typeMap[order.type_]}</div>
+          <div><strong>Status:</strong> {statusMap[order.status]}</div>
+          <div><strong>Price:</strong> {order.price}</div>
+          <div><strong>A Token Amount:</strong> {order.a_token_amount}</div>
+          <div><strong>B Token Amount:</strong> {order.b_token_amount}</div>
+          <div><strong>Locked Balance:</strong> {order.lock_balance}</div>
+          <div><strong>Locked Fee:</strong> {order.lock_fee}</div>
+          <div><strong>Already Deal Amount:</strong> {order.already_deal_amount}</div>
+        </MDBPopoverBody>
+      </MDBPopover>
+    );
   };
 
   return (
@@ -90,50 +146,18 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState, handleTabClic
         </MDBTableHead>
         <MDBTableBody>
           {enrichedTrades.map((trade, index) => {
-            const aOrder = orders.find(order => order.id === trade.a_order_id);
-            const bOrder = orders.find(order => order.id === trade.b_order_id);
-            const marketId = aOrder?.market_id ?? '–';
-
-            const renderOrderPopover = (order: Order | undefined) => {
-              if (!order) return '–';
-              return (
-                <MDBPopover
-                  placement="right"
-                  dismiss
-                  btnChildren={`View orderId ${order.id}`}
-                  btnClassName="btn btn-sm btn-outline-primary"
-                  popperTag="div"
-                >
-                  <MDBPopoverBody className="text-start">
-                    <div><strong>Order ID:</strong> {order.id}</div>
-                    <div><strong>Market ID:</strong> {order.market_id}</div>
-                    <div><strong>Flag:</strong> {order.flag === FLAG_BUY ? "Buy": "Sell"}</div>
-                    <div><strong>Pid:</strong> {order.pid}</div>
-                    <div><strong>Type:</strong> {typeMap[order.type_]}</div>
-                    <div><strong>Status:</strong> {statusMap[order.status]}</div>
-                    <div><strong>Price:</strong> {order.price}</div>
-                    <div><strong>A Token Amount:</strong> {order.a_token_amount}</div>
-                    <div><strong>B Token Amount:</strong> {order.b_token_amount}</div>
-                    <div><strong>Locked Balance:</strong> {order.lock_balance}</div>
-                    <div><strong>Locked Fee:</strong> {order.lock_fee}</div>
-                    <div><strong>Already Deal Amount:</strong> {order.already_deal_amount}</div>
-                  </MDBPopoverBody>
-                </MDBPopover>
-              );
-            };
-
             return (
               <tr key={index}>
                 <td>{(currentPage - 1) * rowsPerPage + index + 1}</td>
                 <td>{trade.trade_id}</td>
-                <td onClick={() => handleTabClick("4")} className="tableMarket">{marketId}</td>
+                <td onClick={() => handleTabClick("4")} className="tableMarket">{trade.marketId}</td>
                 <td>
-                  {renderOrderPopover(aOrder)}
+                  {renderOrderPopover(trade.aOrder)}
                   <br />
                   (Paying Token Index {trade.buyTokenIndexIn} → Receiving Token Index {trade.buyTokenIndexOut})
                 </td>
                 <td>
-                  {renderOrderPopover(bOrder)}
+                  {renderOrderPopover(trade.bOrder)}
                   <br />
                   (Paying Token Index {trade.buyTokenIndexOut} → Receiving Token Index {trade.buyTokenIndexIn})
                 </td>
