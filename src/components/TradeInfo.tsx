@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
 import {
-  MDBContainer,
-  MDBTable,
-  MDBTableHead,
-  MDBTableBody,
-  MDBPagination,
-  MDBPaginationItem,
-  MDBPaginationLink,
   MDBPopover,
   MDBPopoverBody
 } from 'mdb-react-ui-kit';
@@ -128,74 +121,89 @@ export const TradeInfo: React.FC<TradeInfoProps> = ({ playerState, handleTabClic
   };
 
   return (
-    <MDBContainer className="mt-3">
-      <MDBTable>
-        <MDBTableHead>
-          <tr>
-            <th scope="col">#</th>
-            <th scope="col">Trade ID</th>
-            <th scope="col">Market ID</th>
-            <th scope="col">
-              Buy Side
-            </th>
-            <th scope="col">
-              Sell Side
-            </th>
-            <th scope="col">Trading Amount</th>
-          </tr>
-        </MDBTableHead>
-        <MDBTableBody>
-          {enrichedTrades.map((trade, index) => {
-            return (
+    <div className="mt-3 text-gray-900 dark:text-white px-4">
+      <div className="overflow-x-auto rounded-lg shadow-md">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-100 dark:bg-gray-800 text-left text-sm font-semibold">
+            <tr>
+              <th className="px-4 py-2">#</th>
+              <th className="px-4 py-2">Trade ID</th>
+              <th className="px-4 py-2">Market ID</th>
+              <th className="px-4 py-2">Buy Side</th>
+              <th className="px-4 py-2">Sell Side</th>
+              <th className="px-4 py-2">Trading Amount</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            {enrichedTrades.map((trade, index) => (
               <tr key={index}>
-                <td>{(currentPage - 1) * rowsPerPage + index + 1}</td>
-                <td>{trade.trade_id}</td>
-                <td onClick={() => handleTabClick("4")} className="tableMarket">{trade.marketId}</td>
-                <td>
+                <td className="px-4 py-2">{(currentPage - 1) * rowsPerPage + index + 1}</td>
+                <td className="px-4 py-2">{trade.trade_id}</td>
+                <td
+                  className="px-4 py-2 text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  onClick={() => handleTabClick("4")}
+                >
+                  {trade.marketId}
+                </td>
+                <td className="px-4 py-2">
                   {renderOrderPopover(trade.aOrder)}
                   <br />
-                  (Paying Token Index {trade.buyTokenIndexIn} → Receiving Token Index {trade.buyTokenIndexOut})
+                  <span className="text-xs text-gray-500 dark:text-white">
+                    (Paying Token Index {trade.buyTokenIndexIn} → Receiving Token Index {trade.buyTokenIndexOut})
+                  </span>
                 </td>
-                <td>
+                <td className="px-4 py-2">
                   {renderOrderPopover(trade.bOrder)}
                   <br />
-                  (Paying Token Index {trade.buyTokenIndexOut} → Receiving Token Index {trade.buyTokenIndexIn})
+                  <span className="text-xs text-gray-500 dark:text-white">
+                    (Paying Token Index {trade.buyTokenIndexOut} → Receiving Token Index {trade.buyTokenIndexIn})
+                  </span>
                 </td>
-                <td>{trade.a_actual_amount}</td>
+                <td className="px-4 py-2">{trade.a_actual_amount}</td>
               </tr>
-            );
-          })}
-        </MDBTableBody>
-      </MDBTable>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <MDBPagination className="mb-0">
-        <MDBPaginationItem disabled={currentPage === 1}>
-          <MDBPaginationLink
-            style={{ cursor: 'pointer' }}
-            onClick={() => handlePageChange(currentPage - 1)}
-          >
-            Previous
-          </MDBPaginationLink>
-        </MDBPaginationItem>
+      {/* Pagination */}
+      <div className="flex justify-center items-center mt-4 space-x-1">
+        <button
+          className={`px-3 py-1 rounded border text-sm ${
+            currentPage === 1
+              ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
+              : 'bg-white dark:bg-gray-800 text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </button>
         {[...Array(totalPages)].map((_, i) => (
-          <MDBPaginationItem key={i} active={currentPage === i + 1}>
-            <MDBPaginationLink
-              style={{ cursor: 'pointer' }}
-              onClick={() => handlePageChange(i + 1)}
-            >
-              {i + 1}
-            </MDBPaginationLink>
-          </MDBPaginationItem>
-        ))}
-        <MDBPaginationItem disabled={currentPage === totalPages}>
-          <MDBPaginationLink
-            style={{ cursor: 'pointer' }}
-            onClick={() => handlePageChange(currentPage + 1)}
+          <button
+            key={i}
+            className={`px-3 py-1 rounded border text-sm ${
+              currentPage === i + 1
+                ? 'bg-blue-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            onClick={() => handlePageChange(i + 1)}
           >
-            Next
-          </MDBPaginationLink>
-        </MDBPaginationItem>
-      </MDBPagination>
-    </MDBContainer>
+            {i + 1}
+          </button>
+        ))}
+        <button
+          className={`px-3 py-1 rounded border text-sm ${
+            currentPage === totalPages
+              ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
+              : 'bg-white dark:bg-gray-800 text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </button>
+      </div>
+    </div>
   );
 };

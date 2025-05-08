@@ -1,21 +1,8 @@
-import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import {
-  MDBContainer,
-  MDBRow,
-  MDBCol,
-  MDBCard,
-  MDBCardBody,
-  MDBCardHeader,
-  MDBTabs,
-  MDBTabsContent,
-  MDBTabsItem,
-  MDBTabsLink,
-  MDBTabsPane
-} from 'mdb-react-ui-kit';
+import React, { useMemo, useState, useCallback } from 'react';
 import { selectUserState, Order } from '../data/state';
 import { useAppSelector } from '../app/hooks';
 import { selectMarketInfo } from "../data/market";
-import { MarketChartUI, ChartData, OrderBookUI, OrderItem } from "polymarket-ui";
+import { MarketChartUI, ChartData, OrderBookUI, OrderBookTab } from "polymarket-ui";
 import { ResultModal } from "../modals/ResultModal";
 
 export const typeMap: { [key: number]: string } = {
@@ -46,9 +33,7 @@ export const MarketPage: React.FC<MarketPageProps> = ({
   const [infoMessage, setInfoMessage] = useState("");
   const [showResult, setShowResult] = useState(false);
   const [activeTab, setActiveTab] = useState("orderbook");
-  const [prePriceMap, setPrePriceMap] = useState<Record<string, number>>({});
-  const [lastPriceMap, setLastPriceMap] = useState<Record<string, number>>({});
-  const prevMarketInfoRef = useRef<typeof marketInfo>([]);
+  const [orderBookActiveTab, setActiveOrderBookTab] = useState<OrderBookTab>("yes");
 
   // get orders data
   const orders = useMemo(() => userState?.state?.orders ?? [], [userState?.state?.orders]);
@@ -94,11 +79,12 @@ export const MarketPage: React.FC<MarketPageProps> = ({
     // Implement copy logic
   }, []);
 
-  const activeMarkets = marketInfo.filter(market => market.status === 1);
-
-  const handleOrderClick = useCallback((order: OrderItem, type: "ask" | "bid") => {
-    console.log(`${type} order clicked:`, order);
+   // Handle order book tab change
+   const handleOrderBookTabChange = useCallback((tab: OrderBookTab) => {
+    setActiveOrderBookTab(tab);
   }, []);
+
+  const activeMarkets = marketInfo.filter(market => market.status === 1);
 
   // Mock data generator
   // no data in state from back end now
@@ -150,30 +136,17 @@ export const MarketPage: React.FC<MarketPageProps> = ({
         }
       });
 
-      // Calculate price direction
-      const priceDirection: "up" | "down" | "neutral" =
-      lastPriceMap[marketId] > prePriceMap[marketId] ? "up" : lastPriceMap[marketId] < prePriceMap[marketId] ? "down" : "neutral";
-
       return {
         title: "Market " + marketId,
         asks,
         bids,
-        summary: {
-          lastPrice: Number(market.lastPrice),
-          spread: asks.length && bids.length ? Number((asks[0].price - bids[0].price).toFixed(2)) : 0,
-          priceDirection
-        },
-        config: {
-          priceUnit: "$",
-          quantityLabel: "Quantity",
-          totalLabel: "Total",
-          askColor: "text-red-500",
-          bidColor: "text-green-500",
-        },
-        onOrderClick: handleOrderClick
+        lastPrice: Number(market.lastPrice),
+        spread: asks.length && bids.length ? Number((asks[0].price - bids[0].price).toFixed(2)) : 0,
+        activeTab: orderBookActiveTab,
+        onTabChange: handleOrderBookTabChange,
       }
     });
-  }, [activeMarkets, groupedOrders, lastPriceMap, prePriceMap, handleOrderClick]);
+  }, [activeMarkets, groupedOrders, orderBookActiveTab, handleOrderBookTabChange]);
 
   const marketChartPropsArray = useMemo(() => {
     return activeMarkets.map((market) => {
@@ -214,89 +187,74 @@ export const MarketPage: React.FC<MarketPageProps> = ({
     selectedTimeRange
   ]);
 
-  useEffect(() => {
-    const prevMarketInfo = prevMarketInfoRef.current;
-
-    const newPrePriceMap: Record<string, number> = {};
-    const newLastPriceMap: Record<string, number> = {};
-
-    marketInfo.forEach((market) => {
-      const prevMarket = prevMarketInfo.find(m => m.marketId === market.marketId);
-      const prevPrice = Number(prevMarket?.lastPrice ?? 0);
-
-      newPrePriceMap[market.marketId] = prevPrice;
-      newLastPriceMap[market.marketId] = Number(market.lastPrice);
-    });
-
-    setPrePriceMap(newPrePriceMap);
-    setLastPriceMap(newLastPriceMap);
-
-    prevMarketInfoRef.current = marketInfo;
-  }, [marketInfo]);
-
   return (
     <>
-    <MDBContainer>
-      <MDBRow>
-        {activeMarkets.length === 0 ? (
-          <div>No markets available</div>
-        ) : (
-          activeMarkets.map((market, index) => {
-            const marketId = market.marketId;
-            return (
-              <MDBCol md="12" key={marketId}>
-                <MDBCard>
-                  <MDBCardHeader>
-                    <div className="d-flex">
-                      <h5
-                        onClick={() => handleMarketClick(1)}
-                        style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                        onMouseEnter={(e) => (e.target as HTMLElement).style.textDecoration = 'underline'}
-                        onMouseLeave={(e) => (e.target as HTMLElement).style.textDecoration = 'none'}
+    <div className="grid grid-cols-1 gap-4">
+      {activeMarkets.length === 0 ? (
+        <div>No markets available</div>
+      ) : (
+        activeMarkets.map((market, index) => {
+          const marketId = market.marketId;
+          return (
+            <div key={marketId} className="col-span-1">
+              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md">
+                <div className="pt-4 pl-5">
+                  <div className="flex items-center">
+                    <h5
+                      onClick={() => handleMarketClick(1)}
+                      className="cursor-pointer text-black dark:text-white hover:underline"
+                    >
+                      Market {marketId}
+                    </h5>
+                  </div>
+                </div>
+
+                {selectedMarket === 1 && (
+                  <div className="pt-2">
+                    <div className="mb-3 flex space-x-4 border-b border-gray-200 dark:border-gray-600">
+                      <button
+                        onClick={() => handleTabClick("orderbook")}
+                        className={`py-2 px-4 text-sm font-medium ${
+                          activeTab === "orderbook"
+                            ? "border-b-2 border-white text-black dark:text-white"
+                            : "text-gray-500 hover:text-black dark:hover:text-white"
+                        }`}
                       >
-                        Market {marketId}
-                      </h5>
+                        Orderbook
+                      </button>
+                      <button
+                        onClick={() => handleTabClick("graph")}
+                        className={`py-2 px-4 text-sm font-medium ${
+                          activeTab === "graph"
+                            ? "border-b-2 border-white text-black dark:text-white"
+                            : "text-gray-500 hover:text-black dark:hover:text-white"
+                        }`}
+                      >
+                        Graph
+                      </button>
                     </div>
-                  </MDBCardHeader>
-                  {selectedMarket === 1 && (
-                    <MDBCardBody>
-                      <MDBTabs className="mb-3">
-                        <MDBTabsItem>
-                          <MDBTabsLink
-                            onClick={() => handleTabClick("orderbook")}
-                            active={activeTab === "orderbook"}
-                          >
-                            Orderbook
-                          </MDBTabsLink>
-                        </MDBTabsItem>
-                        <MDBTabsItem>
-                          <MDBTabsLink
-                            onClick={() => handleTabClick("graph")}
-                            active={activeTab === "graph"}
-                          >
-                            Graph
-                          </MDBTabsLink>
-                        </MDBTabsItem>
-                      </MDBTabs>
 
-                      <MDBTabsContent>
-                        <MDBTabsPane open={activeTab === "orderbook"}>
-                          {orderBookPropsArray && orderBookPropsArray[index] && <OrderBookUI {...orderBookPropsArray[index]} />}
-                        </MDBTabsPane>
+                    <div>
+                      {activeTab === "orderbook" &&
+                        orderBookPropsArray &&
+                        orderBookPropsArray[index] && (
+                          <OrderBookUI {...orderBookPropsArray[index]} />
+                        )}
 
-                        <MDBTabsPane open={activeTab === "graph"}>
-                          {marketChartPropsArray && marketChartPropsArray[index] && <MarketChartUI {...marketChartPropsArray[index]} />}
-                        </MDBTabsPane>
-                      </MDBTabsContent>
-                    </MDBCardBody>
-                  )}
-                </MDBCard>
-              </MDBCol>
-            );
-          })
-        )}
-      </MDBRow>
-    </MDBContainer>
+                      {activeTab === "graph" &&
+                        marketChartPropsArray &&
+                        marketChartPropsArray[index] && (
+                          <MarketChartUI {...marketChartPropsArray[index]} />
+                        )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
     <ResultModal
       infoMessage={infoMessage}
       show={showResult}

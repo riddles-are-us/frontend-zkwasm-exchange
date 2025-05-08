@@ -1,9 +1,4 @@
 import React, { useCallback, useState } from "react";
-import {
-  MDBContainer,
-  MDBNavbar,
-  MDBCol
-} from 'mdb-react-ui-kit';
 import { NavbarUI, useThemeContext } from "polymarket-ui";
 import {
   UserIcon,
@@ -22,7 +17,9 @@ interface NavProps {
 
 export default function Nav(props: NavProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState<string>();
+  const [isConnected, setIsConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("123");
+  const [userName, setUserName] = useState("");
   const { isDarkMode, toggleDarkMode } = useThemeContext();
   const [infoMessage, setInfoMessage] = useState("");
   const [showResult, setShowResult] = useState(false);
@@ -32,11 +29,10 @@ export default function Nav(props: NavProps) {
   const connect = useCallback(async () => {
     try {
       let action = await dispatch(AccountSlice.loginL1AccountAsync());
-
       if (AccountSlice.loginL1AccountAsync.fulfilled.match(action)) {
         console.log("Login successful:", action.payload);
-        setIsLoggedIn(true);
-        setUserName(action.payload.address);
+        setIsConnected(true);
+        setWalletAddress("0x44082c260E532C92cAc0172AbAD7B86B30Ce364b");
       } else if (AccountSlice.loginL1AccountAsync.rejected.match(action)) {
         const errorMessage = action.error.message || 'Unknown error';
         const userMessage = extractErrorMessage(errorMessage);
@@ -50,10 +46,8 @@ export default function Nav(props: NavProps) {
 
   const login = useCallback(async () => {
     try {
-      console.log(l1account, isLoggedIn, userName)
       if (l1account) {
         let action = await dispatch(AccountSlice.loginL2AccountAsync("ZKWASM-BEAT"));
-        console.log("dispatch result:", action);
         if (AccountSlice.loginL2AccountAsync.fulfilled.match(action)) {
           console.log("Login successful:", action.payload);
           const l2addresshex = "0x" + action.payload.pubkey;
@@ -65,14 +59,14 @@ export default function Nav(props: NavProps) {
           throw new Error("Error: " + userMessage);
         }
       } else {
-        setInfoMessage("Please sign up first!");
+        setInfoMessage("Please connect wallet first!");
         setShowResult(true);
       }
     } catch (err: any) {
       setInfoMessage(err.message || "Unknown error");
       setShowResult(true);
     }
-  }, [dispatch, isLoggedIn, l1account, userName]);
+  }, [dispatch, l1account]);
 
   const handleSearch = useCallback((query: string) => {
     console.log("Search:", query);
@@ -83,13 +77,13 @@ export default function Nav(props: NavProps) {
     await login();
   }, [login]);
 
-  const handleSignUp = useCallback(async () => {
+  const handleConnect = useCallback(async () => {
     await connect();
   }, [connect]);
 
   const handleProfileClick = useCallback(() => {
-    login();
-  }, [login]);
+    console.log("Profile clicked");
+  }, []);
 
   const handleLogoClick = useCallback(() => {
     console.log("Logo clicked");
@@ -116,9 +110,11 @@ export default function Nav(props: NavProps) {
     menuItems: menuItems,
     auth: {
       isLoggedIn,
+      isConnected,
       userName,
+      walletAddress,
       onLogin: handleLogin,
-      onSignUp: handleSignUp,
+      onConnect: handleConnect,
       onProfileClick: handleProfileClick,
     },
     darkMode: {
@@ -129,13 +125,7 @@ export default function Nav(props: NavProps) {
 
   return (
     <>
-    <MDBNavbar expand='lg' light bgColor='light'>
-      <MDBContainer fluid>
-        <MDBCol md="12">
-          <NavbarUI {...navBarProps} />
-        </MDBCol>
-      </MDBContainer>
-    </MDBNavbar>
+    <NavbarUI {...navBarProps} />
     <ResultModal
       infoMessage={infoMessage}
       show={showResult}

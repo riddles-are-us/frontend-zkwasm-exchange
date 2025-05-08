@@ -1,9 +1,4 @@
 import React, { useCallback, useState } from "react";
-import {
-  MDBContainer,
-  MDBNavbar,
-  MDBCol
-} from 'mdb-react-ui-kit';
 import { ResultModal } from "../modals/ResultModal";
 import { TradingPanelUI } from "polymarket-ui";
 import { useAppSelector, useAppDispatch } from "../app/hooks";
@@ -609,18 +604,12 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
 
   return (
     <>
-    <MDBNavbar expand='lg' light bgColor='light'>
-      <MDBContainer fluid>
-        <MDBCol md="12">
-          <TradingPanelUI {...TradingPanelProps} isMobileView={isMobileView} />
-        </MDBCol>
-      </MDBContainer>
-    </MDBNavbar>
-    <ResultModal
-      infoMessage={infoMessage}
-      show={showResult}
-      onClose={() => setShowResult(false)}
-    />
+      <TradingPanelUI {...TradingPanelProps} isMobileView={isMobileView} />
+      <ResultModal
+        infoMessage={infoMessage}
+        show={showResult}
+        onClose={() => setShowResult(false)}
+      />
     </>
   );
 }

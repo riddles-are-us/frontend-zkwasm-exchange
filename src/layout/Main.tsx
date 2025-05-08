@@ -15,7 +15,6 @@ import {
 } from "../request";
 import { createCommand } from "zkwasm-minirollup-rpc";
 import { MarketPage } from "../components/MarketPage";
-import Footer from "../components/Foot";
 import Nav from "../components/Nav";
 import Commands from "../components/Commands";
 import { PlayerInfo } from "../components/PlayerInfo";
@@ -124,14 +123,15 @@ export function Main() {
 
   return (
     <>
-      <button onClick={toggleDarkMode}>Toggle {isDarkMode ? "Light" : "Dark"} Mode</button>
       <div className={`min-h-screen bg-gray-100 dark:bg-gray-900`}>
-        <Nav handleTabClick={handleTabClick} />
-        <div className="container mx-auto px-4 py-6 pb-[120px] lg:pb-6">
+        <div className="fixed top-0 left-0 right-0 z-50">
+          <Nav handleTabClick={handleTabClick} />
+        </div>
+        <div className="pt-20 container mx-auto px-4 py-6 pb-[120px] lg:pb-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left column */}
             <div className="lg:col-span-2 space-y-6">
-              <MDBTabsContent style={{ maxHeight: "400px", overflowY: "auto" }}>
+              <MDBTabsContent>
                 <MDBTabsPane open={activeTab === "1"}>
                   <AdminInfo adminState={adminState} />
                 </MDBTabsPane>
@@ -149,24 +149,26 @@ export function Main() {
                 </MDBTabsPane>
               </MDBTabsContent>
 
-              <MDBRow className="mt-4">
-                <MDBCol>
-                  <MDBCard>
-                    <MDBCardBody>
-                      <MDBTypography tag="h4" className="mb-3 text-center">
+              <div className="mt-4">
+                <div className="w-full">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                    <div className="p-6">
+                      <h4 className="mb-3 text-center text-black dark:text-white">
                         Execute Commands
-                      </MDBTypography>
+                      </h4>
                       <Commands />
-                    </MDBCardBody>
-                  </MDBCard>
-                </MDBCol>
-              </MDBRow>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <Comments />
             </div>
             {/* Right column - Only visible on desktop */}
             {!isMobile && (
               <div className="lg:col-span-1">
-                <TradingPanel selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} currentPrice={75} maxAmount={1000} />
+                <div className="fixed top-18">
+                  <TradingPanel selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} currentPrice={75} maxAmount={1000} />
+                </div>
               </div>
             )}
           </div>
@@ -174,8 +176,6 @@ export function Main() {
         {/* Mobile trading panel */}
         {isMobile && <TradingPanel selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} currentPrice={75} maxAmount={1000} isMobileView={true} />}
       </div>
-      {/* Footer */}
-      <Footer />
     </>
   );
 }
