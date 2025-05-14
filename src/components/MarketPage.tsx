@@ -21,11 +21,15 @@ export const statusMap: { [key: number]: string } = {
 interface MarketPageProps {
   selectedMarket: number | null;
   setSelectedMarket: React.Dispatch<React.SetStateAction<number | null>>;
+  orderBookActiveTab: OrderBookTab;
+  handleOrderBookTabChange: (tab: OrderBookTab) => void;
 }
 
 export const MarketPage: React.FC<MarketPageProps> = ({
   selectedMarket,
-  setSelectedMarket
+  setSelectedMarket,
+  orderBookActiveTab,
+  handleOrderBookTabChange
 }) => {
   const userState = useAppSelector(selectUserState);
   const marketInfo = useAppSelector(selectMarketInfo);
@@ -33,7 +37,6 @@ export const MarketPage: React.FC<MarketPageProps> = ({
   const [infoMessage, setInfoMessage] = useState("");
   const [showResult, setShowResult] = useState(false);
   const [activeTab, setActiveTab] = useState("orderbook");
-  const [orderBookActiveTab, setActiveOrderBookTab] = useState<OrderBookTab>("yes");
 
   // get orders data
   const orders = useMemo(() => userState?.state?.orders ?? [], [userState?.state?.orders]);
@@ -79,11 +82,6 @@ export const MarketPage: React.FC<MarketPageProps> = ({
     // Implement copy logic
   }, []);
 
-   // Handle order book tab change
-   const handleOrderBookTabChange = useCallback((tab: OrderBookTab) => {
-    setActiveOrderBookTab(tab);
-  }, []);
-
   const activeMarkets = marketInfo.filter(market => market.status === 1);
 
   // Mock data generator
@@ -113,7 +111,7 @@ export const MarketPage: React.FC<MarketPageProps> = ({
     return activeMarkets.map((market) => {
       const marketId = market.marketId;
       const marketOrders = groupedOrders[marketId] || [];
-      let asks = marketOrders.filter((order: any) => order.flag === 0).sort((a, b) => a.price - b.price);
+      let asks = marketOrders.filter((order: any) => order.flag === 0).sort((a, b) => b.price - a.price);
       asks = asks.map((ask) => {
         let quantity = ask.b_token_amount ? ask.b_token_amount : ask.a_token_amount;
         let price = ask.price;

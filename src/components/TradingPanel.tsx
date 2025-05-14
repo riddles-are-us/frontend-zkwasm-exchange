@@ -31,7 +31,8 @@ interface TradingPanelProps {
   maxAmount: number;
   isMobileView?: boolean;
   selectedMarket: number | null;
-  setSelectedMarket: React.Dispatch<React.SetStateAction<number | null>>;
+  selectedOption: "yes" | "no";
+  handleOptionChange: (option: "yes" | "no") => void;
 }
 
 const TradingPanel: React.FC<TradingPanelProps> = ({
@@ -39,11 +40,11 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
   maxAmount,
   isMobileView = false,
   selectedMarket,
-  setSelectedMarket
+  selectedOption,
+  handleOptionChange
 }) => {
   const dispatch = useAppDispatch();
   const [selectedTab, setSelectedTab] = useState<"buy" | "sell">("buy");
-  const [selectedOption, setSelectedOption] = useState<"yes" | "no">("yes");
   const [tradeType, setTradeType] = useState<"market" | "limit">("market");
   const [limitPrice, setLimitPrice] = useState<string>(currentPrice.toString());
   const [amount, setAmount] = useState<string>("0");
@@ -503,10 +504,6 @@ const TradingPanel: React.FC<TradingPanelProps> = ({
   
   const handleTabChange = useCallback((tab: "buy" | "sell") => {
     setSelectedTab(tab);
-  }, []);
-
-  const handleOptionChange = useCallback((option: "yes" | "no") => {
-    setSelectedOption(option);
   }, []);
 
   const handleTradeTypeChange = useCallback((type: "market" | "limit") => {

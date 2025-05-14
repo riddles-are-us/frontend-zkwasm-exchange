@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import 'mdb-react-ui-kit/dist/css/mdb.min.css';
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import "./style.css";
@@ -22,11 +22,6 @@ import TokenInfo from "../components/TokenInfo";
 import { AdminInfo } from "../components/AdminInfo";
 import { TradeInfo } from "../components/TradeInfo";
 import {
-  MDBCard,
-  MDBCardBody,
-  MDBRow,
-  MDBCol,
-  MDBTypography,
   MDBTabsContent,
   MDBTabsPane
 } from 'mdb-react-ui-kit';
@@ -34,7 +29,7 @@ import { queryStateI } from "../request";
 import { UserState } from "../data/state";
 import {
   useMediaQuery,
-  useThemeContext
+  OrderBookTab
 } from "polymarket-ui";
 import TradingPanel from "../components/TradingPanel";
 import { Comments } from "../components/Comments";
@@ -52,8 +47,17 @@ export function Main() {
   const [adminState, setAdminState] = useState<UserState | null>(null);
   const [playerState, setPlayerState] = useState<UserState | null>(null);
   const isMobile = useMediaQuery("(max-width: 1024px)");
-  const { isDarkMode, toggleDarkMode } = useThemeContext();
   const [selectedMarket, setSelectedMarket] = useState<number | null>(null);
+  const [selectedOption, setSelectedOption] = useState<"yes" | "no">("yes");
+
+  const handleOptionChange = useCallback((option: "yes" | "no") => {
+    setSelectedOption(option);
+  }, []);
+
+  // Handle order book tab change
+  const handleOrderBookTabChange = useCallback((tab: OrderBookTab) => {
+    setSelectedOption(tab);
+  }, []);
 
   async function updateState() {
     dispatch(queryMarket());
@@ -142,7 +146,7 @@ export function Main() {
                   <TokenInfo />
                 </MDBTabsPane>
                 <MDBTabsPane open={activeTab === "4"}>
-                  <MarketPage selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} />
+                  <MarketPage orderBookActiveTab={selectedOption} handleOrderBookTabChange={handleOrderBookTabChange} selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} />
                 </MDBTabsPane>
                 <MDBTabsPane open={activeTab === "5"}>
                   <TradeInfo playerState={playerState} handleTabClick={handleTabClick} />
@@ -167,14 +171,14 @@ export function Main() {
             {!isMobile && (
               <div className="lg:col-span-1">
                 <div className="fixed top-18">
-                  <TradingPanel selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} currentPrice={75} maxAmount={1000} />
+                  <TradingPanel selectedOption={selectedOption} handleOptionChange={handleOptionChange} selectedMarket={selectedMarket} currentPrice={75} maxAmount={1000} />
                 </div>
               </div>
             )}
           </div>
         </div>
         {/* Mobile trading panel */}
-        {isMobile && <TradingPanel selectedMarket={selectedMarket} setSelectedMarket={setSelectedMarket} currentPrice={75} maxAmount={1000} isMobileView={true} />}
+        {isMobile && <TradingPanel selectedOption={selectedOption} handleOptionChange={handleOptionChange} selectedMarket={selectedMarket} currentPrice={75} maxAmount={1000} isMobileView={true} />}
       </div>
     </>
   );
