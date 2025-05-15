@@ -197,14 +197,15 @@ export const MarketPage: React.FC<MarketPageProps> = ({
             <div key={marketId} className="col-span-1">
               <div className="bg-white dark:bg-gray-900 rounded-lg shadow-md">
                 <div className="pt-4 pl-5">
-                  <div className="flex items-center">
                     <h5
                       onClick={() => handleMarketClick(1)}
                       className="cursor-pointer text-black dark:text-white hover:underline"
                     >
                       Market {marketId}
                     </h5>
-                  </div>
+                    <div className="text-sm text-gray-600 dark:text-white mt-1">
+                      (tokenIndex {market.tokenA} / tokenIndex {market.tokenB})
+                    </div>
                 </div>
 
                 {selectedMarket === 1 && (
