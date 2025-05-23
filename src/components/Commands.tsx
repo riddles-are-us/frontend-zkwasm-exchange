@@ -10,15 +10,12 @@ import { ResultModal } from "../modals/ResultModal";
 import AddTokenModal from "../modals/AddTokenModal";
 import UpdateTokenModal from "../modals/UpdateTokenModal";
 import WithdrawTokenModal from "../modals/WithdrawTokenModal";
-import AddLimitOrderModal from "../modals/AddLimitOrderModal";
-import AddMarketOrderModal from "../modals/AddMarketOrderModal";
 import CancelOrderModal from "../modals/CancelOrderModal";
 import AddMarketModal from "../modals/AddMarketModal";
 import CloseMarketModal from "../modals/CloseMarketModal";
 import TransferModal from "../modals/TransferModal";
 import DepositTokenModal from "../modals/DepositTokenModal";
 import { selectMarketInfo } from "../data/market";
-import { checkHelper } from "../utils/transaction";
 import { Market } from "../data/market";
 
 const PRECISION = BigInt(1e9);
@@ -36,8 +33,6 @@ const CMD_ADD_TOKEN = 1n;
 const CMD_UPDATE_TOKEN = 12n;
 const CMD_ADD_MARKET = 2n;
 const CMD_DEPOSIT_TOKEN = 3n;
-const CMD_ADD_LIMIT_ORDER = 5n;
-const CMD_ADD_MARKET_ORDER = 6n;
 const CMD_CANCEL_ORDER = 7n;
 const CMD_CLOSE_MARKET = 8n;
 const CMD_TRANSFER = 9n;
@@ -55,8 +50,6 @@ export default function Commands() {
   const [showAddTokenModal, setShowAddTokenModal] = useState(false);
   const [showUpdateTokenModal, setShowUpdateTokenModal] = useState(false);
   const [showWithdrawTokenModal, setShowWithdrawTokenModal] = useState(false);
-  const [showAddLimitOrderModal, setShowAddLimitOrderModal] = useState(false);
-  const [showAddMarketOrderModal, setShowAddMarketOrderModal] = useState(false);
   const [showCancelOrderModal, setShowCancelOrderModal] = useState(false);
   const [showAddMarketModal, setShowAddMarketModal] = useState(false);
   const [showCloseMarketModal, setShowCloseMarketModal] = useState(false);
@@ -472,191 +465,6 @@ export default function Commands() {
     return action;
   }
 
-  const addMarketOrder = async (marketId: bigint, flag: bigint, bTokenAmount: bigint, aTokenAmount: bigint) => {
-    if (!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowAddMarketOrderModal(false);
-      return;
-    }
-
-    // Send transaction to add market order
-    let f = async () => {
-      let params = [marketId, flag, bTokenAmount, aTokenAmount];
-      let action = await dispatch(
-        sendTransaction({
-          cmd: createCommand(BigInt(nonce), CMD_ADD_MARKET_ORDER, params),
-          prikey: l2account!.getPrivateKey(),
-        })
-      );
-      return action;
-    }
-
-    const filteredMarkets = marketInfo.filter(market => BigInt(market.marketId) === marketId);
-    if(filteredMarkets.length === 0) {
-      setInfoMessage("Market not exist");
-      setShowResult(true);
-      setShowAddLimitOrderModal(false);
-      return;
-    }
-    const market = filteredMarkets[0];
-    let tokenIndex = 0;
-    let cost = 0n;
-    if (flag === BigInt(FLAG_BUY)) {  // If it's a Buy order
-      tokenIndex = market.tokenA;
-      if (aTokenAmount !== 0n) {
-        cost = aTokenAmount;
-      } else {
-        cost = bTokenAmount * BigInt(market.lastPrice) / PRECISION;
-        console.log("cost", cost)
-        if(cost > MAX_64_BIT) {
-          throw new Error("cost overflow");
-        }
-        cost = cost * 2n;
-        console.log("cost * 2", cost)
-      }
-    } else if (flag === BigInt(FLAG_SELL)) {  // If it's a Sell order
-      tokenIndex = market.tokenB;
-      if (bTokenAmount !== 0n) {
-          cost = bTokenAmount;
-      } else {
-          cost = (aTokenAmount * 2n * PRECISION) / BigInt(market.lastPrice);
-      }
-    }
-
-    // positions' length is 2 now
-    let position = userState!.player!.data.positions[tokenIndex];
-    if(BigInt(position.balance) < cost) {
-      throw new Error("Insufficient balance. cost is " + cost + ". balance is " + position.balance);
-    }
-    let newLockBalance = BigInt(position.lock_balance) + cost;
-    if(newLockBalance > MAX_64_BIT) {
-      throw new Error("lock_balance overflow");
-    }
-
-    position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
-    if(position.balance < FEE) {
-      throw new Error("Insufficient fee balance");
-    }
-    newLockBalance = BigInt(position.lock_balance + FEE);
-    if(BigInt(newLockBalance) > MAX_64_BIT) {
-      throw new Error("fee lock_balance overflow");
-    }
-
-    const action = await orderCheck(f, market, flag, cost, checkHelper);
-
-    let successMessage = "";
-    if (sendTransaction.fulfilled.match(action)) {
-      // Return success message along with the result
-      const orders = action.payload.state.orders;
-      const latestOrder = orders[orders.length - 1];
-      successMessage += "Success: latest order is " + JSON.stringify(latestOrder) + "\n";
-
-      // Try match orders. If matched, get addTrade parameters
-      const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
-      if(addTradeResult) {
-        successMessage += " " + addTradeResult;
-      }
-      return successMessage;
-    } else if (sendTransaction.rejected.match(action)) {
-      let message = "";
-      const index = tokenIndex.toString();
-      const balance = userState!.player!.data.positions[index].balance;
-      const lockBalance = userState!.player!.data.positions[index].balance;
-      message = ". Wallet player's balance for Token " + index + ": " + balance + ". Wallet player's lock balance for Token " + index + ": " + lockBalance;
-      throw new Error("Error: " +  action.payload + message);
-    }
-  };
-
-  const addLimitOrder = async (marketId: bigint, flag: bigint, limitPrice: bigint, amount: bigint) => {
-    if (!l2account) {
-      setInfoMessage("Please connect wallet before any transactions!");
-      setShowResult(true);
-      setShowAddLimitOrderModal(false);
-      return;
-    }
-
-    // Send transaction to add limit order
-    let f = async () => {
-      let params = [marketId, flag, limitPrice, amount];
-      let action = await dispatch(
-        sendTransaction({
-          cmd: createCommand(BigInt(nonce), CMD_ADD_LIMIT_ORDER, params),
-          prikey: l2account!.getPrivateKey(),
-        })
-      );
-      return action;
-    }
-
-    // comment because of no market data in state
-    const filteredMarkets = marketInfo.filter(market => BigInt(market.marketId) === marketId);
-    if(filteredMarkets.length === 0) {
-      setInfoMessage("Market not exist");
-      setShowResult(true);
-      setShowAddLimitOrderModal(false);
-      return;
-    }
-    const market = filteredMarkets[0];
-    let tokenIndex = 0;
-    let cost = 0n;
-    if (flag === BigInt(FLAG_BUY)) {  // If it's a Buy order
-      tokenIndex = market.tokenA;
-      cost = amount * limitPrice / PRECISION;
-      if(cost > MAX_64_BIT) {
-        throw new Error("cost overflow");
-      }
-    } else if (flag === BigInt(FLAG_SELL)) {  // If it's a Sell order
-      tokenIndex = market.tokenB;
-      cost = amount;
-    }
-
-    // positions' length is 2 now
-    let position = userState!.player!.data.positions[tokenIndex];
-    if(BigInt(position.balance) < cost) {
-      throw new Error("Insufficient balance");
-    }
-    let newLockBalance = BigInt(position.lock_balance) + cost;
-    if(newLockBalance > MAX_64_BIT) {
-      throw new Error("lock_balance overflow");
-    }
-
-    position = userState!.player!.data.positions[FEE_TOKEN_INDEX];
-    if(position.balance < FEE) {
-      throw new Error("Insufficient fee balance");
-    }
-    newLockBalance = BigInt(position.lock_balance + FEE);
-    if(BigInt(newLockBalance) > MAX_64_BIT) {
-      throw new Error("fee lock_balance overflow");
-    }
-
-    // Validate if the state has changed correctly
-    const action = await orderCheck(f, market, flag, cost, checkHelper);
-
-    let successMessage = "";
-    if (sendTransaction.fulfilled.match(action)) {
-      // Return success message along with the result
-      const orders = action.payload.state.orders;
-      const latestOrder = orders[orders.length - 1];
-      successMessage += "Success: latest order is " + JSON.stringify(latestOrder) + "\n";
-
-      // Try match orders. If matched, get addTrade parameters
-      const params = await matchOrdersGetTradeParams(orders, latestOrder);
-      const addTradeResult = await addTrade(params!.aOrderId, params!.bOrderId, params!.aActualAmount, params!.bActualAmount);
-      if(addTradeResult) {
-        successMessage += " " + addTradeResult;
-      }
-      return successMessage;
-    } else if (sendTransaction.rejected.match(action)) {
-      let message = "";
-      const index = tokenIndex.toString();
-      const balance = userState!.player!.data.positions[index].balance;
-      const lockBalance = userState!.player!.data.positions[index].balance;
-      message = ". Wallet player's balance for Token " + index + ": " + balance + ". Wallet player's lock balance for Token " + index + ": " + lockBalance;
-      throw new Error("Error: " +  action.payload + message);
-    }
-  };
-
   const cancelOrder = async (orderId: bigint) => {
     if(!l2account) {
       setInfoMessage("Please connect wallet before any transactions!");
@@ -784,16 +592,6 @@ export default function Commands() {
         <MDBRow className="justify-content-start mt-4">
           {/* Order Management Commands */}
           <MDBCol md="3">
-            <MDBBtn onClick={() => setShowAddLimitOrderModal(true)} color="primary" block>
-              <MDBIcon icon="plus" /> Add Limit Order
-            </MDBBtn>
-          </MDBCol>
-          <MDBCol md="3">
-            <MDBBtn onClick={() => setShowAddMarketOrderModal(true)} color="primary" block>
-              <MDBIcon icon="plus" /> Add Market Order
-            </MDBBtn>
-          </MDBCol>
-          <MDBCol md="3">
             <MDBBtn onClick={() => setShowCancelOrderModal(true)} color="danger" block>
               <MDBIcon icon="trash" /> Cancel Order
             </MDBBtn>
@@ -816,16 +614,6 @@ export default function Commands() {
         show={showWithdrawTokenModal}
         onClose={() => setShowWithdrawTokenModal(false)}
         handler={withdrawToken}
-      />
-      <AddLimitOrderModal
-        show={showAddLimitOrderModal}
-        onClose={() => setShowAddLimitOrderModal(false)}
-        handler={addLimitOrder}
-      />
-      <AddMarketOrderModal
-        show={showAddMarketOrderModal}
-        onClose={() => setShowAddMarketOrderModal(false)}
-        handler={addMarketOrder}
       />
       <CancelOrderModal
         show={showCancelOrderModal}
